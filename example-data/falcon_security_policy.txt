@@ -1,0 +1,17 @@
+# Project Falcon: Private Data Processing Policy
+
+Effective Date: January 2026
+Author: Security & Infrastructure Team
+
+## 1. Scope and Classification
+All internal research notes, financial forecasts, and proprietary code repositories are classified as "RESTRICTED INTERNAL ASSETS". These documents are strictly forbidden from being transmitted to third-party commercial AI APIs (such as OpenAI, Anthropic, or cloud-hosted endpoints).
+
+## 2. Approved Local AI Tooling
+The only approved mechanism for querying sensitive documentation is the Local-First Document Intelligence Agent.
+Approved configurations:
+1. Backend Gateway: FastAPI running on local loopback interface (127.0.0.1).
+2. Local LLM Runtime: Ollama daemon hosting `llama3.2` and `nomic-embed-text`.
+3. Vector Database: Local ChromaDB instance stored at `./chroma_db`.
+
+## 3. Incident Response and Auditing
+If an operator detects any external socket traffic on ports other than local loopback during document ingestion or chat synthesis, the instance must be immediately isolated. The system is designed to operate completely offline (airplane mode).

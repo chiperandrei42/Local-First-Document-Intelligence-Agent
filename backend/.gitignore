@@ -1,0 +1,21 @@
+# Ignore all personal documents
+/data/*
+!/data/.keep
+
+# Ignore local vector databases
+/chroma_db/
+*.sqlite3
+pg_data/
+
+# Ignore environment variables
+.env
+.env.local
+
+# Python environment & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.log
