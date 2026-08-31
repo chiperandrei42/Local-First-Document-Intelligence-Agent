@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Local-First Document Intelligence Agent | 100% Private RAG',
-  description: 'Fully private, locally hosted Retrieval-Augmented Generation (RAG) system powered by Ollama, ChromaDB, and Next.js.',
+  title: 'Local-First Document Intelligence Agent | 100% Air-Gapped RAG',
+  description: 'Ultra-private, locally hosted Retrieval-Augmented Generation (RAG) agent running Ollama, ChromaDB, and Next.js.',
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 font-sans">
+      <body className="min-h-full flex flex-col bg-[#030704] text-[#e2f5ea] font-sans selection:bg-emerald-500/30 selection:text-[#00ff88]">
         {children}
       </body>
     </html>

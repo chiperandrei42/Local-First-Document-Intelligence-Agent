@@ -35,8 +35,22 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [loadStatus]);
 
+  // Keyboard shortcut support (Cmd+K / Ctrl+K for documents, Escape to close sidebar)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSidebarOpen((prev) => !prev);
+      } else if (e.key === 'Escape' && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSidebarOpen]);
+
   return (
-    <main className="flex h-screen w-full flex-col overflow-hidden bg-slate-950 text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+    <main className="relative flex h-screen w-full flex-col overflow-hidden bg-[#030704] text-[#e2f5ea]">
       {/* Top Navigation Header */}
       <Header
         status={status}
