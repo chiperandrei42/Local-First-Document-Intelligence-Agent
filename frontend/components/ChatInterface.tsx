@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { 
   Send, 
   Sparkles, 
@@ -15,6 +16,7 @@ import {
   Cpu,
   Lock
 } from 'lucide-react';
+
 import { Message, Citation } from '@/lib/types';
 import { streamChat } from '@/lib/api';
 import { MessageBubble } from './MessageBubble';
@@ -71,6 +73,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isStreaming, scrollToBottom]);
+
+  // Auto-resize textarea to fit text content smoothly without scrollbars
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
+    }
+  }, [inputQuery]);
 
   const handleInspectCitations = (citations: Citation[], initialIndex = 0) => {
     setInspectorCitations(citations);
@@ -171,7 +181,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-1 flex-col h-full overflow-hidden bg-[#030704]">
+    <div className="flex flex-1 flex-col h-full overflow-hidden bg-[#060607]">
       
       {/* Scrollable Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
@@ -179,62 +189,72 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           
           {/* Empty Welcome State */}
           {messages.length === 0 ? (
-            <div className="my-8 flex flex-col items-center text-center">
+            <div className="my-12 flex flex-col items-center text-center animate-slide-up">
               
-              {/* Glowing Hero Icon */}
-              <div className="relative mb-6">
-                <div className="absolute -inset-2 rounded-3xl bg-[#00ff88]/20 blur-xl" />
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-[#00ff88]/40 bg-[#070e0a] text-[#00ff88] shadow-[0_0_30px_rgba(0,255,136,0.2)]">
-                  <ShieldCheck className="h-10 w-10" />
+              {/* Canonical Cetera Hero Emblem (Stable Hover) */}
+              <div className="relative mb-5">
+                <div className="absolute inset-0 bg-[#614DFF]/20 blur-3xl rounded-full scale-110 pointer-events-none" />
+                <div className="relative flex items-center justify-center p-2">
+                  <Image 
+                    src="/cetera-logo-transparent.png" 
+                    alt="cetera" 
+                    width={180} 
+                    height={216}
+                    className="drop-shadow-[0_0_25px_rgba(97,77,255,0.4)]"
+                    priority
+                  />
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-950/60 px-3 py-1 text-xs font-mono text-[#00ff88] mb-3">
-                <Lock className="h-3 w-3 text-[#00ff88]" />
-                <span>SECURE ENCLAVE ACTIVE</span>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold tracking-widest text-white/60 mb-5 uppercase">
+                <Lock className="h-3.5 w-3.5 text-[#614DFF]" />
+                <span>Secure Local Enclave</span>
               </div>
 
-              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-4xl font-mono">
-                LOCAL<span className="text-[#00ff88]">_DOCUMENT</span> INTELLIGENCE
+              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-sans mb-3">
+                Good morning.
               </h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-                Ground answers directly against your vector database. All vector generation, token embeddings, and model inferences execute completely on local hardware.
+
+              <p className="max-w-md text-base leading-relaxed text-white/40">
+                What shall we analyze today? All intelligence remains strictly offline on your hardware.
               </p>
+
+
 
               {/* Status Alert if No Documents */}
               {totalDocs === 0 ? (
-                <div className="mt-6 flex items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-950/30 px-5 py-3 text-xs text-amber-300">
-                  <Zap className="h-4 w-4 text-amber-400 flex-shrink-0" />
-                  <span>No documents are indexed yet. Load example data to initialize semantic retrieval.</span>
+                <div className="mt-8 flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] px-6 py-4 text-sm text-white/60 shadow-lg animate-slide-up backdrop-blur-md">
+                  <Zap className="h-5 w-5 text-[#614DFF] flex-shrink-0" />
+                  <span>Your database is empty. Load documents to begin.</span>
                   <button
                     onClick={onOpenSidebar}
-                    className="ml-2 cursor-pointer rounded-lg bg-amber-500/20 border border-amber-500/40 px-3 py-1 font-mono font-semibold text-amber-200 hover:bg-amber-500/30 transition-all"
+                    className="ml-4 cursor-pointer rounded-xl bg-white/10 border border-white/5 px-4 py-2 font-semibold text-white hover:bg-white/20 active:scale-95 transition-all"
                   >
-                    Open Manager
+                    Open Documents
                   </button>
                 </div>
               ) : null}
 
               {/* Starter Query Cards Grid */}
-              <div className="mt-8 grid w-full grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+              <div className="mt-12 grid w-full max-w-3xl grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                 {STARTER_PROMPTS.map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSendMessage(item.prompt)}
-                    className="cyber-card group cursor-pointer flex flex-col justify-between rounded-2xl p-4 text-left"
+                    className="group cursor-pointer flex flex-col justify-between rounded-3xl p-6 text-left border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04] transition-all duration-300 active:scale-[0.98] shadow-lg backdrop-blur-sm"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded bg-emerald-950/80 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#00ff88] border border-emerald-500/30">
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-lg bg-[#614DFF]/10 px-2 py-1 text-[10px] font-bold text-[#614DFF] uppercase tracking-wider">
                           {item.tag}
                         </span>
-                        <span className="text-xs font-semibold text-emerald-200 font-mono">
+                        <span className="text-sm font-semibold text-white/90">
                           {item.title}
                         </span>
                       </div>
-                      <ArrowRight className="h-3.5 w-3.5 text-emerald-500/40 group-hover:text-[#00ff88] group-hover:translate-x-1 transition-all" />
+                      <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-white/80 group-hover:translate-x-1 transition-all duration-300" />
                     </div>
-                    <p className="mt-2.5 text-xs leading-relaxed text-slate-400 group-hover:text-slate-200 transition-colors">
+                    <p className="mt-3 text-sm leading-relaxed text-white/40 group-hover:text-white/60 transition-colors duration-300 line-clamp-2">
                       {item.prompt}
                     </p>
                   </button>
@@ -246,11 +266,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
           {/* Rendered Messages */}
           {messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              onInspectCitations={handleInspectCitations}
-            />
+            <div key={message.id} className="animate-slide-up">
+              <MessageBubble
+                message={message}
+                onInspectCitations={handleInspectCitations}
+              />
+            </div>
           ))}
 
           <div ref={messagesEndRef} />
@@ -258,16 +279,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Input Bar Fixed at Bottom */}
-      <div className="border-t border-emerald-900/30 bg-[#030704]/95 backdrop-blur-xl px-4 py-4 sm:px-8">
-        <div className="mx-auto max-w-4xl">
+      <div className="bg-gradient-to-t from-[#060607] via-[#060607] to-transparent pt-10 pb-6 px-4 sm:px-8 absolute bottom-0 left-0 w-full z-10 pointer-events-none">
+        <div className="mx-auto max-w-4xl pointer-events-auto">
           
-          <div className="relative flex items-end rounded-2xl border border-emerald-900/60 bg-[#070e0a] shadow-[0_4px_25px_rgba(0,0,0,0.6)] focus-within:border-[#00ff88] focus-within:ring-1 focus-within:ring-[#00ff88] focus-within:shadow-[0_0_20px_rgba(0,255,136,0.15)] transition-all">
+          <div className="relative flex items-center rounded-[2rem] border border-white/10 bg-[#060607]/80 backdrop-blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] focus-within:border-white/20 focus-within:bg-white/[0.02] transition-all duration-300 p-2">
             
-            {/* Terminal prompt symbol */}
-            <div className="pl-3.5 pb-3 text-[#00ff88] font-mono text-sm select-none opacity-80">
-              &gt;
-            </div>
-
             {/* Query Textarea */}
             <textarea
               ref={textareaRef}
@@ -275,20 +291,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your local documents (Enter to send, Shift+Enter for new line)..."
-              className="w-full resize-none bg-transparent px-3 py-3 text-sm font-sans text-emerald-100 placeholder-emerald-900/80 focus:outline-none max-h-36 overflow-y-auto"
+              placeholder="Ask anything about your documents..."
+              className="w-full resize-none bg-transparent px-4 py-3 text-sm font-sans text-white placeholder-white/30 focus:outline-none max-h-36 overflow-y-auto no-scrollbar"
+              style={{ scrollbarWidth: 'none' }}
             />
 
+
             {/* Actions: Clear Chat & Submit */}
-            <div className="flex items-center gap-1.5 p-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 px-2">
               {messages.length > 0 ? (
                 <button
                   type="button"
                   onClick={handleClearChat}
                   title="Clear conversation"
-                  className="cursor-pointer rounded-xl p-2 text-slate-500 hover:bg-rose-950/40 hover:text-rose-400 border border-transparent hover:border-rose-800/40 transition-all"
+                  className="cursor-pointer rounded-full p-3 text-white/30 hover:bg-white/5 hover:text-white/80 transition-all active:scale-95"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-5 w-5" />
                 </button>
               ) : null}
 
@@ -296,26 +314,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 type="button"
                 onClick={() => handleSendMessage()}
                 disabled={!inputQuery.trim() || isStreaming}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-[#00ff88] to-[#059669] text-black font-bold shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all hover:opacity-95 hover:shadow-[0_0_25px_rgba(0,255,136,0.6)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer disabled:shadow-none"
+                className="primary-glow-btn flex h-12 w-12 items-center justify-center rounded-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none active:scale-95"
               >
                 {isStreaming ? (
-                  <StopCircle className="h-4 w-4 animate-pulse text-black" />
+                  <StopCircle className="h-5 w-5 animate-pulse" />
                 ) : (
-                  <Send className="h-4 w-4 text-black" />
+                  <Send className="h-5 w-5 -ml-0.5" />
                 )}
               </button>
             </div>
 
           </div>
 
-          <div className="mt-2.5 flex items-center justify-between px-1 text-[11px] font-mono text-emerald-500/70">
+          <div className="mt-4 flex items-center justify-center gap-4 text-[10px] uppercase tracking-widest font-semibold text-white/30">
             <span className="flex items-center gap-1.5">
-              <Cpu className="h-3 w-3 text-[#00ff88]" />
-              Model: <strong className="text-emerald-300 font-semibold">{selectedModel}</strong>
+              <Cpu className="h-3.5 w-3.5 text-white/40" />
+              {selectedModel}
             </span>
-            <span className="flex items-center gap-1">
-              <span className="h-1 w-1 rounded-full bg-[#00ff88]" />
-              Zero-exfiltration architecture active
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#614DFF] shadow-[0_0_8px_rgba(97,77,255,0.8)]" />
+              Zero-Exfiltration Active
             </span>
           </div>
 
@@ -333,3 +351,4 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     </div>
   );
 };
+

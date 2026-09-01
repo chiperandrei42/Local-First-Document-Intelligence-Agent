@@ -1,21 +1,27 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Sora, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const sora = Sora({
+  variable: '--font-sans',
   subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+  variable: '--font-mono',
   subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: 'Local-First Document Intelligence Agent | 100% Air-Gapped RAG',
-  description: 'Ultra-private, locally hosted Retrieval-Augmented Generation (RAG) agent running Ollama, ChromaDB, and Next.js.',
+  title: 'cetera | Local-First Document Intelligence',
+  description: 'Ultra-private, locally hosted Retrieval-Augmented Generation (RAG) agent.',
+  icons: {
+    icon: '/cetera-icon-transparent.png',
+    shortcut: '/cetera-icon-transparent.png',
+    apple: '/cetera-icon-transparent.png',
+  },
 };
+
 
 export default function RootLayout({
   children,
@@ -25,11 +31,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${sora.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-[#030704] text-[#e2f5ea] font-sans selection:bg-emerald-500/30 selection:text-[#00ff88]">
+      <body className="min-h-full flex flex-col bg-[#060607] text-[#FEFDFF] font-sans selection:bg-[#614DFF]/30 selection:text-white">
         {children}
       </body>
     </html>
   );
 }
+

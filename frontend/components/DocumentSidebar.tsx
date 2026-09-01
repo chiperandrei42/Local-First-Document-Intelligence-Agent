@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import { 
   X, 
   UploadCloud, 
@@ -17,6 +18,7 @@ import {
   Layers,
   HardDrive
 } from 'lucide-react';
+
 import { DocumentInfo } from '@/lib/types';
 import { ingestDirectory, uploadFiles, clearDatabase, deleteDocument } from '@/lib/api';
 
@@ -147,198 +149,205 @@ export const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
   };
 
   const getFileIcon = (type: string, name: string) => {
-    if (type === 'pdf' || name.endsWith('.pdf')) return <BookOpen className="h-4 w-4 text-[#00ff88]" />;
-    if (type === 'md' || name.endsWith('.md')) return <FileCode className="h-4 w-4 text-emerald-400" />;
+    if (type === 'pdf' || name.endsWith('.pdf')) return <BookOpen className="h-4 w-4 text-blue-500" />;
+    if (type === 'md' || name.endsWith('.md')) return <FileCode className="h-4 w-4 text-blue-400" />;
     return <FileText className="h-4 w-4 text-slate-400" />;
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-emerald-900/40 bg-[#030704]/95 backdrop-blur-2xl shadow-[-10px_0_30px_rgba(0,0,0,0.8)] transition-all duration-300">
-      
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between border-b border-emerald-900/40 px-6 py-4 bg-[#070e0a]">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-950/60 border border-[#00ff88]/40 text-[#00ff88] shadow-[0_0_10px_rgba(0,255,136,0.15)]">
-            <Database className="h-4 w-4" />
+    <div 
+      className={`h-full flex-shrink-0 flex flex-col border-r border-white/5 bg-[#060607]/80 backdrop-blur-md shadow-2xl transition-all duration-300 overflow-hidden ${
+        isOpen ? 'w80 sm:w-96 opacity-100' : 'w-0 opacity-0 border-r-0'
+      }`}
+    >
+      <div className="w-80 sm:w-96 h-full flex flex-col">
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/10 p-1.5 shadow-[0_0_15px_rgba(97,77,255,0.15)]">
+              <Image 
+                src="/cetera-icon-transparent.png" 
+                alt="cetera" 
+                width={26} 
+                height={26}
+                className="drop-shadow-[0_0_6px_rgba(97,77,255,0.5)]"
+              />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-white tracking-wide">Document Storage</h2>
+              <p className="text-xs text-white/40 mt-0.5">
+                {documents.length} files • {totalChunks} chunks
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-bold text-white font-mono">VECTOR_STORE</h2>
-            <p className="text-xs text-emerald-400/80 font-mono">
-              {documents.length} files • {totalChunks} indexed chunks
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="cursor-pointer rounded-lg p-1.5 text-slate-400 hover:bg-emerald-950/60 hover:text-[#00ff88] transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
 
-      {/* Main Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-        
-        {/* Quick Ingestion Actions */}
-        <div className="space-y-3">
-          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400/70">
-            INGESTION PIPELINES
-          </span>
-
-          <div className="grid grid-cols-1 gap-2.5">
-            {/* Quick Ingest Example Data */}
-            <button
-              onClick={handleIngestExampleData}
-              disabled={isIngesting}
-              className="cursor-pointer flex items-center justify-between rounded-xl border border-[#00ff88]/30 bg-gradient-to-r from-emerald-950/50 to-[#070e0a] p-3 text-left transition-all hover:border-[#00ff88] hover:shadow-[0_0_15px_rgba(0,255,136,0.2)] disabled:opacity-50 group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00ff88]/20 border border-[#00ff88]/30 text-[#00ff88]">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-mono font-semibold text-emerald-100 group-hover:text-[#00ff88] transition-colors">
-                    Load Example Dataset
-                  </div>
-                  <div className="text-[11px] text-emerald-400/60">
-                    Ingest /example-data public PDF & MD
-                  </div>
-                </div>
-              </div>
-              {isIngesting ? <Loader2 className="h-4 w-4 animate-spin text-[#00ff88]" /> : null}
-            </button>
-
-            {/* Ingest /data Directory */}
-            <button
-              onClick={handleIngestDataFolder}
-              disabled={isIngesting}
-              className="cursor-pointer flex items-center justify-between rounded-xl border border-emerald-900/40 bg-[#070e0a] p-3 text-left transition-all hover:border-emerald-500/50 hover:bg-emerald-950/30 disabled:opacity-50 group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-950/80 border border-emerald-800/40 text-emerald-400">
-                  <HardDrive className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-mono font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">
-                    Index Local /data Folder
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Scan private PDFs and markdown files
-                  </div>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Upload Custom Files Box with Drag and Drop */}
-        <div className="space-y-2">
-          <span className="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400/70">
-            UPLOAD LOCAL DOCUMENTS
-          </span>
-          <input
-            type="file"
-            multiple
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".pdf,.md,.markdown,.txt"
-            className="hidden"
-          />
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
-              isDragging
-                ? 'border-[#00ff88] bg-emerald-950/60 shadow-[0_0_20px_rgba(0,255,136,0.3)]'
-                : 'border-emerald-900/60 bg-[#070e0a]/60 hover:border-[#00ff88]/60 hover:bg-emerald-950/30'
-            }`}
+          <button
+            onClick={onClose}
+            className="cursor-pointer rounded-lg p-2 text-white/40 hover:bg-white/5 hover:text-white transition-colors"
           >
-            <UploadCloud className="h-7 w-7 text-[#00ff88] mb-2" />
-            <p className="text-xs font-mono font-medium text-emerald-200">
-              Click or Drag documents here
-            </p>
-            <div className="flex gap-1.5 mt-2">
-              <span className="rounded bg-emerald-950 px-1.5 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-800/40">.PDF</span>
-              <span className="rounded bg-emerald-950 px-1.5 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-800/40">.MD</span>
-              <span className="rounded bg-emerald-950 px-1.5 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-800/40">.TXT</span>
-            </div>
-          </div>
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Feedback / Status Alert */}
-        {ingestStatus ? (
-          <div className={`flex items-center gap-2 rounded-xl p-3 text-xs font-mono font-medium border ${
-            isError 
-              ? 'border-rose-500/40 bg-rose-950/40 text-rose-300' 
-              : 'border-[#00ff88]/40 bg-emerald-950/60 text-[#00ff88] shadow-[0_0_12px_rgba(0,255,136,0.15)]'
-          }`}>
-            {isError ? <AlertCircle className="h-4 w-4 flex-shrink-0" /> : <CheckCircle2 className="h-4 w-4 flex-shrink-0" />}
-            <span className="flex-1">{ingestStatus}</span>
-          </div>
-        ) : null}
-
-        {/* Ingested Documents List */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400/70">
-              INDEXED FILES ({documents.length})
+        {/* Main Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+          
+          {/* Quick Ingestion Actions */}
+          <div className="space-y-3">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
+              Pipelines
             </span>
+
+            <div className="grid grid-cols-1 gap-3">
+              {/* Quick Ingest Example Data */}
+              <button
+                onClick={handleIngestExampleData}
+                disabled={isIngesting}
+                className="cursor-pointer flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-left transition-colors duration-200 hover:bg-white/[0.05] hover:border-white/10 disabled:opacity-50 group"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#614DFF]/20 text-[#614DFF] group-hover:bg-[#614DFF]/30 transition-colors duration-200">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white/90 group-hover:text-white transition-colors duration-200">
+                    Example Dataset
+                  </div>
+                  <div className="text-xs text-white/40 mt-0.5">
+                    Load sample public data
+                  </div>
+                </div>
+                {isIngesting && <Loader2 className="h-4 w-4 animate-spin text-[#614DFF] ml-auto" />}
+              </button>
+
+              {/* Ingest /data Directory */}
+              <button
+                onClick={handleIngestDataFolder}
+                disabled={isIngesting}
+                className="cursor-pointer flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-left transition-colors duration-200 hover:bg-white/[0.05] hover:border-white/10 disabled:opacity-50 group"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 group-hover:bg-white/10 group-hover:text-white transition-colors duration-200">
+                  <HardDrive className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white/90 group-hover:text-white transition-colors duration-200">
+                    Local Folder
+                  </div>
+                  <div className="text-xs text-white/40 mt-0.5">
+                    Index /data directory
+                  </div>
+                </div>
+              </button>
+
+            </div>
           </div>
 
-          {documents.length === 0 ? (
-            <div className="rounded-xl border border-emerald-900/30 bg-[#070e0a]/40 p-4 text-center text-xs font-mono text-slate-500">
-              No documents indexed in ChromaDB collection yet.
+          {/* Upload Custom Files Box */}
+          <div className="space-y-3">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
+              Upload
+            </span>
+            <input
+              type="file"
+              multiple
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".pdf,.md,.markdown,.txt"
+              className="hidden"
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed p-6 text-center transition-all duration-300 ${
+                isDragging
+                  ? 'border-[#614DFF] bg-[#614DFF]/10'
+                  : 'border-white/20 bg-white/[0.02] hover:border-[#614DFF]/50 hover:bg-white/[0.04]'
+              }`}
+            >
+              <UploadCloud className={`h-8 w-8 mb-3 transition-colors ${isDragging ? 'text-[#614DFF]' : 'text-white/60'}`} />
+              <p className="text-sm font-medium text-white/80">
+                Click or drag files here
+              </p>
+              <div className="flex gap-2 mt-3">
+                <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-white/40">.PDF</span>
+                <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-white/40">.MD</span>
+                <span className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-white/40">.TXT</span>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((doc, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded-xl border border-emerald-900/40 bg-[#070e0a] p-3 transition-all hover:border-emerald-500/40 hover:bg-emerald-950/20"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-950/80 border border-emerald-900/60 flex-shrink-0">
-                      {getFileIcon(doc.source_type, doc.filename)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-mono font-medium text-emerald-100">
-                        {doc.filename}
-                      </p>
-                      <p className="text-[11px] font-mono text-emerald-500/70">
-                        {doc.total_chunks} chunks {doc.pages && doc.pages > 1 ? `• ${doc.pages} pages` : ''}
-                      </p>
-                    </div>
-                  </div>
+          </div>
 
-                  <button
-                    onClick={() => handleDeleteDoc(doc.filename)}
-                    className="cursor-pointer ml-2 rounded-lg p-1.5 text-slate-500 hover:bg-rose-950/40 hover:text-rose-400 transition-colors"
-                    title="Delete document vectors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+          {/* Feedback / Status Alert */}
+          {ingestStatus && (
+            <div className={`flex items-center gap-3 rounded-2xl p-4 text-sm font-medium border animate-slide-up ${
+              isError 
+                ? 'border-red-500/20 bg-red-500/10 text-red-400' 
+                : 'border-[#614DFF]/20 bg-[#614DFF]/10 text-[#7563FF]'
+            }`}>
+              {isError ? <AlertCircle className="h-5 w-5 flex-shrink-0" /> : <CheckCircle2 className="h-5 w-5 flex-shrink-0" />}
+              <span className="flex-1 leading-snug">{ingestStatus}</span>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Footer Actions */}
-      <div className="border-t border-emerald-900/40 bg-[#070e0a] p-4">
-        <button
-          onClick={handleClearAll}
-          disabled={documents.length === 0 || isIngesting}
-          className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-950/30 py-2.5 text-xs font-mono font-semibold text-rose-300 transition-all hover:bg-rose-950/60 hover:border-rose-500/60 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span>PURGE VECTOR DATABASE</span>
-        </button>
+          {/* Ingested Documents List */}
+          <div className="space-y-3">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
+              Indexed Files ({documents.length})
+            </span>
+
+            {documents.length === 0 ? (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center text-sm text-white/40">
+                No documents indexed yet.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.06] group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 flex-shrink-0">
+                        {getFileIcon(doc.source_type, doc.filename)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-white/90">
+                          {doc.filename}
+                        </p>
+                        <p className="text-[11px] text-white/40 mt-0.5">
+                          {doc.total_chunks} chunks {doc.pages && doc.pages > 1 ? `• ${doc.pages} pages` : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteDoc(doc.filename)}
+                      className="cursor-pointer ml-2 rounded-xl p-2 text-white/40 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 transition-all focus:opacity-100"
+                      title="Delete document vectors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="border-t border-white/5 bg-[#060607] p-5">
+          <button
+            onClick={handleClearAll}
+            disabled={documents.length === 0 || isIngesting}
+            className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 py-3 text-sm font-semibold text-red-400 transition-all hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span>Purge Database</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 };
+
+

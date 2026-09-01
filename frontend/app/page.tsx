@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Header } from '@/components/Header';
+import { SidebarNav } from '@/components/SidebarNav';
 import { DocumentSidebar } from '@/components/DocumentSidebar';
 import { ChatInterface } from '@/components/ChatInterface';
 import { fetchStatus } from '@/lib/api';
@@ -10,7 +10,7 @@ import { StatusResponse } from '@/lib/types';
 export default function Home() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('llama3.2');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [activeView, setActiveView] = useState<'chat' | 'documents' | 'settings'>('chat');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   const loadStatus = useCallback(async () => {
@@ -22,7 +22,6 @@ export default function Home() {
         setSelectedModel(data.default_llm);
       }
     } catch {
-      // Backend may be starting or offline
       setStatus(null);
     } finally {
       setIsRefreshing(false);
@@ -35,51 +34,52 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [loadStatus]);
 
-  // Keyboard shortcut support (Cmd+K / Ctrl+K for documents, Escape to close sidebar)
+  // Keyboard shortcut support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsSidebarOpen((prev) => !prev);
-      } else if (e.key === 'Escape' && isSidebarOpen) {
-        setIsSidebarOpen(false);
+        setActiveView(prev => prev === 'documents' ? 'chat' : 'documents');
+      } else if (e.key === 'Escape' && activeView === 'documents') {
+        setActiveView('chat');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSidebarOpen]);
+  }, [activeView]);
 
   return (
-    <main className="relative flex h-screen w-full flex-col overflow-hidden bg-[#030704] text-[#e2f5ea]">
-      {/* Top Navigation Header */}
-      <Header
+    <main className="flex h-screen w-full overflow-hidden bg-[#060607] text-[#FEFDFF]">
+      {/* Narrow Left Sidebar */}
+      <SidebarNav 
         status={status}
-        selectedModel={selectedModel}
-        onSelectModel={setSelectedModel}
-        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-        isSidebarOpen={isSidebarOpen}
-        onRefreshStatus={loadStatus}
-        isRefreshing={isRefreshing}
+        activeView={activeView}
+        onViewChange={(view) => setActiveView(activeView === view && view === 'documents' ? 'chat' : view)}
       />
 
       {/* Main Content Area */}
       <div className="relative flex flex-1 overflow-hidden">
-        {/* Chat Stream & Interaction */}
-        <ChatInterface
-          selectedModel={selectedModel}
-          totalDocs={status?.total_documents ?? 0}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
-        />
-
-        {/* Document Ingestion & Management Sidebar */}
+        
+        {/* Document Manager Slide-out Panel */}
         <DocumentSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
+          isOpen={activeView === 'documents'}
+          onClose={() => setActiveView('chat')}
           documents={status?.documents || []}
           totalChunks={status?.total_chunks || 0}
           onRefreshData={loadStatus}
         />
+
+        {/* Chat Interface (Always visible, might shift or get overlaid) */}
+        <div className="flex-1 relative overflow-hidden">
+          <ChatInterface
+            selectedModel={selectedModel}
+            totalDocs={status?.total_documents ?? 0}
+            onOpenSidebar={() => setActiveView('documents')}
+          />
+        </div>
+        
       </div>
     </main>
   );
 }
+
