@@ -2,14 +2,9 @@
 
 import React from 'react';
 import { 
-  ShieldCheck, 
   Cpu, 
-  Database, 
-  Server, 
   FolderGit2, 
   RefreshCw, 
-  Zap,
-  Lock,
   Activity,
   Terminal
 } from 'lucide-react';
@@ -109,12 +104,6 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </select>
             <div className="pointer-events-none absolute right-2 text-[9px] text-[#00ff88]">▼</div>
-          </div>
-
-          {/* VRAM Limit Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 rounded-lg border border-emerald-900/40 bg-[#070e0a]/80 px-2.5 py-1.5 text-xs font-mono text-emerald-300">
-            <Zap className="h-3.5 w-3.5 text-[#00ff88]" />
-            <span>8GB VRAM Safe</span>
           </div>
 
           {/* Document Drawer Toggle Button */}
