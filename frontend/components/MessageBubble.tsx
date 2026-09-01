@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
@@ -42,25 +43,45 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         : 'bg-[#0A0A0C] border border-white/10 shadow-lg'
     }`}>
       {/* Avatar Icon */}
-      <div className="flex-shrink-0 mt-1">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg border text-sm transition-all duration-300 ${
-          isUser
-            ? 'border-white/10 bg-white/5 text-white/60'
-            : 'border-[#614DFF]/30 bg-[#614DFF]/10 text-[#614DFF] shadow-[0_0_15px_rgba(97,77,255,0.15)] overflow-hidden p-1'
-        }`}>
-          {isUser ? (
-            <User className="h-4 w-4" />
-          ) : (
+      <div className="flex-shrink-0 mt-0.5">
+        {isUser ? (
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/60">
+            <User className="h-3.5 w-3.5" />
+          </div>
+        ) : (
+          <div className="relative flex h-7 w-7 items-center justify-center">
+            {/* Smooth Dissolving Spinner Ring */}
+            <span 
+              className={`absolute -inset-1 rounded-full border border-[#614DFF]/30 border-t-[#8C7DFF] transition-all duration-700 ease-out ${
+                message.isStreaming 
+                  ? 'opacity-100 scale-100 animate-spin' 
+                  : 'opacity-0 scale-110 pointer-events-none'
+              }`} 
+            />
+
+            {/* Ambient Soft Aura Glow */}
+            <div 
+              className={`absolute inset-0 rounded-full bg-[#614DFF]/20 blur-md transition-all duration-700 ease-out pointer-events-none ${
+                message.isStreaming ? 'opacity-100 scale-125' : 'opacity-0 scale-100'
+              }`}
+            />
+
             <Image 
               src="/cetera-icon-transparent.png" 
               alt="cetera" 
-              width={20} 
-              height={20}
-              className="drop-shadow-[0_0_6px_rgba(97,77,255,0.6)]"
+              width={24} 
+              height={24}
+              className={`transition-all duration-700 ease-out ${
+                message.isStreaming 
+                  ? 'drop-shadow-[0_0_14px_rgba(97,77,255,0.9)] animate-pulse' 
+                  : 'drop-shadow-[0_0_8px_rgba(97,77,255,0.5)]'
+              }`}
             />
-          )}
-        </div>
+          </div>
+
+        )}
       </div>
+
 
 
       {/* Message Content Container */}
@@ -68,12 +89,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Header: Role & Timestamp & Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold tracking-wide text-white/80">
-              {isUser ? 'You' : 'cetera'}
-            </span>
-            <span className="text-[10px] text-white/30">•</span>
+            {isUser ? (
+              <>
+                <span className="text-xs font-semibold tracking-wide text-white/80">You</span>
+                <span className="text-[10px] text-white/30">•</span>
+              </>
+            ) : null}
             <span className="text-[10px] text-white/40 font-medium">{message.timestamp}</span>
           </div>
+
 
           {!isUser && message.content ? (
             <button

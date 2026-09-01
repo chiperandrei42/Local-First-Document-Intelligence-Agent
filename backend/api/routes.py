@@ -5,7 +5,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 
-from database.schemas import ChatRequest, IngestResponse, StatusResponse, DocumentInfo
+from database.schemas import ChatRequest, IngestResponse, StatusResponse, DocumentInfo, PullModelRequest
 from database.vector_store import vector_store
 from services.ollama_service import ollama_service
 from services.ingestion_service import ingestion_service
@@ -42,10 +42,28 @@ async def get_status():
         available_models=ollama_info["models"],
         default_llm=ollama_info["default_llm"],
         default_embed=ollama_info["default_embed"],
+        has_vision_model=ollama_info.get("has_vision_model", False),
+        vision_model=ollama_info.get("vision_model"),
+        recommended_vision_model=ollama_info.get("recommended_vision_model", "llama3.2-vision"),
         total_documents=len(docs),
         total_chunks=total_chunks,
         documents=doc_models,
     )
+
+@router.post("/models/pull")
+async def pull_model(request: PullModelRequest):
+    """1-Click download and install local Ollama model with real-time SSE progress streaming."""
+    ollama_info = await ollama_service.check_health()
+    if not ollama_info["connected"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Ollama daemon is not running at {ollama_info['url']}.",
+        )
+    return StreamingResponse(
+        ollama_service.pull_model_stream(request.model),
+        media_type="text/event-stream",
+    )
+
 
 @router.get("/documents", response_model=List[DocumentInfo])
 async def get_documents():
@@ -98,12 +116,15 @@ async def ingest_documents(
     if files:
         processed_files = []
         total_chunks = 0
+        issue_details = []
         for file in files:
             try:
                 content = await file.read()
                 res = await ingestion_service.process_file(file.filename, content)
                 processed_files.append(res)
                 total_chunks += res.get("chunks", 0)
+                if res.get("status") == "empty_or_unreadable":
+                    issue_details.append(f"'{file.filename}' has no readable text.")
             except Exception as e:
                 processed_files.append({
                     "filename": file.filename,
@@ -111,13 +132,18 @@ async def ingest_documents(
                     "error": str(e),
                     "chunks": 0,
                 })
+                issue_details.append(f"'{file.filename}': {str(e)}")
+
+        details_msg = " | ".join(issue_details) if issue_details else None
 
         return IngestResponse(
-            status="success",
+            status="success" if total_chunks > 0 else "warning",
             total_files_processed=len(processed_files),
             total_chunks_indexed=total_chunks,
             files=processed_files,
+            details=details_msg,
         )
+
 
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,

@@ -37,12 +37,19 @@ class DocumentInfo(BaseModel):
     source_type: str
     pages: Optional[int] = None
 
+class PullModelRequest(BaseModel):
+    model: str = "llama3.2-vision"
+
 class StatusResponse(BaseModel):
     ollama_connected: bool
     ollama_url: str
     available_models: List[str]
     default_llm: str
     default_embed: str
+    has_vision_model: bool = False
+    vision_model: Optional[str] = None
+    recommended_vision_model: Optional[str] = "llama3.2-vision"
     total_documents: int
     total_chunks: int
     documents: List[DocumentInfo]
+

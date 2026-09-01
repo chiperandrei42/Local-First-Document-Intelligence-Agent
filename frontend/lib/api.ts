@@ -1,4 +1,5 @@
-import { StatusResponse, DocumentInfo, IngestResponse, Citation, Message } from './types';
+import { StatusResponse, DocumentInfo, IngestResponse, Citation, Message, ModelPullProgress } from './types';
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -159,3 +160,70 @@ export async function streamChat(
     callbacks.onError?.(err instanceof Error ? err.message : String(err));
   }
 }
+
+export async function pullModelStream(
+  modelName: string,
+  onProgress: (progress: ModelPullProgress) => void,
+  onDone: () => void,
+  onError: (error: string) => void
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/api/models/pull`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ model: modelName }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+      onError(errorData.detail || `Server error (${res.status})`);
+      return;
+    }
+
+    if (!res.body) {
+      onError('No response body received from server.');
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        const dataStr = trimmed.slice(5).trim();
+        if (!dataStr) continue;
+
+        try {
+          const payload = JSON.parse(dataStr);
+          if (payload.status === 'error' || payload.error) {
+            onError(payload.error || 'Failed to download model');
+            return;
+          }
+          onProgress(payload);
+          if (payload.status === 'success') {
+            onDone();
+            return;
+          }
+        } catch {
+          // ignore chunk parse errors
+        }
+      }
+    }
+    onDone();
+  } catch (err: unknown) {
+    onError(err instanceof Error ? err.message : String(err));
+  }
+}
+

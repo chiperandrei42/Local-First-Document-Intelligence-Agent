@@ -28,9 +28,21 @@ export interface StatusResponse {
   available_models: string[];
   default_llm: string;
   default_embed: string;
+  has_vision_model?: boolean;
+  vision_model?: string | null;
+  recommended_vision_model?: string;
   total_documents: number;
   total_chunks: number;
   documents: DocumentInfo[];
+}
+
+export interface ModelPullProgress {
+  status: string;
+  digest?: string;
+  total?: number;
+  completed?: number;
+  percent?: number;
+  error?: string;
 }
 
 export interface IngestResponse {
@@ -46,3 +58,4 @@ export interface IngestResponse {
   }>;
   details?: string;
 }
+

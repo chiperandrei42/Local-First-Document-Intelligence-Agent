@@ -204,8 +204,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     <div className="flex flex-1 flex-col h-full overflow-hidden bg-[#060607]">
       
       {/* Scrollable Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-48 sm:px-8 sm:pb-52">
         <div className="mx-auto max-w-4xl space-y-6">
+
           
           {/* Empty Welcome State */}
           {messages.length === 0 ? (

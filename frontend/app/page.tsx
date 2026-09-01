@@ -66,8 +66,11 @@ export default function Home() {
           onClose={() => setActiveView('chat')}
           documents={status?.documents || []}
           totalChunks={status?.total_chunks || 0}
+          hasVisionModel={status?.has_vision_model}
+          visionModel={status?.vision_model}
           onRefreshData={loadStatus}
         />
+
 
         {/* Chat Interface (Always visible, might shift or get overlaid) */}
         <div className="flex-1 relative overflow-hidden">

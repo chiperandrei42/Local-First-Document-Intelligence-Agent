@@ -114,4 +114,83 @@ class OllamaService:
                         except Exception:
                             continue
 
+    async def transcribe_image(self, image_bytes: bytes, model: Optional[str] = None) -> str:
+
+        """Transcribe handwritten text, diagrams, and notes from an image using a local Ollama vision model."""
+        import base64
+        
+        # 1. Detect or verify vision model
+        vision_model = model
+        if not vision_model:
+            health = await self.check_health()
+            models = health.get("models", [])
+            for m in models:
+                name_lower = m.lower()
+                if any(v in name_lower for v in ["vision", "llava", "minicpm", "moondream", "bakllava", "qwen2-vl"]):
+                    vision_model = m
+                    break
+
+        if not vision_model:
+            return ""
+
+        base64_img = base64.b64encode(image_bytes).decode("utf-8")
+        prompt = (
+            "You are an offline handwriting recognition and document intelligence engine. "
+            "Accurately transcribe all handwritten notes, titles, bullet points, math expressions, "
+            "and diagrams on this page into clean, structured Markdown text. "
+            "Preserve the verbatim content and layout hierarchy. Do not output conversational introductory text."
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                res = await client.post(
+                    f"{self.base_url}/api/generate",
+                    json={
+                        "model": vision_model,
+                        "prompt": prompt,
+                        "images": [base64_img],
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.1,
+                        },
+                    },
+                )
+                if res.status_code == 200:
+                    return res.json().get("response", "").strip()
+        except Exception:
+            pass
+        return ""
+
+
+    async def pull_model_stream(self, model_name: str) -> AsyncGenerator[str, None]:
+        """Stream model download and extraction progress from Ollama."""
+        import json
+        async with httpx.AsyncClient(timeout=None) as client:
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/api/pull",
+                    json={"name": model_name, "stream": True},
+                ) as response:
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        yield f"data: {json.dumps({'status': 'error', 'error': error_text.decode('utf-8')})}\n\n"
+                        return
+
+                    async for line in response.aiter_lines():
+                        if line:
+                            try:
+                                data = json.loads(line)
+                                total = data.get("total", 0)
+                                completed = data.get("completed", 0)
+                                percent = round((completed / total) * 100, 1) if total > 0 else 0
+                                data["percent"] = percent
+                                yield f"data: {json.dumps(data)}\n\n"
+                            except Exception:
+                                pass
+            except Exception as e:
+                yield f"data: {json.dumps({'status': 'error', 'error': str(e)})}\n\n"
+
 ollama_service = OllamaService()
+
+
