@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+
 import { 
   X, 
   UploadCloud, 
@@ -41,7 +42,14 @@ export const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
   const [ingestStatus, setIngestStatus] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
 
   const handleIngestExampleData = async () => {
     try {
@@ -338,13 +346,15 @@ export const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
         <div className="border-t border-white/5 bg-[#060607] p-5">
           <button
             onClick={handleClearAll}
-            disabled={documents.length === 0 || isIngesting}
+            disabled={!mounted || documents.length === 0 || isIngesting}
+            suppressHydrationWarning
             className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 py-3 text-sm font-semibold text-red-400 transition-all hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Trash2 className="h-4 w-4" />
             <span>Purge Database</span>
           </button>
         </div>
+
       </div>
     </div>
   );

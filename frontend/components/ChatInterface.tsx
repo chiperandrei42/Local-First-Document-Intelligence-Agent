@@ -51,6 +51,18 @@ const STARTER_PROMPTS = [
   },
 ];
 
+const GREETING_OPTIONS = [
+  'Where would you like to begin?',
+  'Ready when you are.',
+  'What shall we analyze today?',
+  'How can I assist your research?',
+  'What questions are on your mind?',
+  'Ready to explore your documents.',
+  'What insights are we uncovering today?',
+  'Your private enclave is ready.',
+  'Ask anything across your knowledge base.',
+];
+
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   selectedModel,
   totalDocs,
@@ -62,13 +74,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [inspectorCitations, setInspectorCitations] = useState<Citation[]>([]);
   const [inspectorIndex, setInspectorIndex] = useState(0);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [greeting, setGreeting] = useState('Where would you like to begin?');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Pick a fresh greeting on each app session
+  useEffect(() => {
+    const random = GREETING_OPTIONS[Math.floor(Math.random() * GREETING_OPTIONS.length)];
+    setGreeting(random);
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
+
 
   useEffect(() => {
     scrollToBottom();
@@ -211,9 +231,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <span>Secure Local Enclave</span>
               </div>
 
-              <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-sans mb-3">
-                Good morning.
+              <h2 
+                suppressHydrationWarning
+                className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-sans mb-3"
+              >
+                {greeting}
               </h2>
+
+
+
 
               <p className="max-w-md text-base leading-relaxed text-white/40">
                 What shall we analyze today? All intelligence remains strictly offline on your hardware.
