@@ -138,7 +138,7 @@ If distributing to users who **do not have Python installed on their machines**,
 ```bash
 # In project root
 cd backend
-python -m PyInstaller --noconfirm --onedir --name "backend" --add-data "services;services" --add-data "database;database" --add-data "api;api" main.py
+python -m PyInstaller --noconfirm --onedir --name "backend" --collect-all chromadb --collect-all uvicorn --add-data "services;services" --add-data "database;database" --add-data "api;api" main.py
 cd ..
 
 # Package installer with frozen backend

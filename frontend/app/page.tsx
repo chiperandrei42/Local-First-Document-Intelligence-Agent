@@ -55,9 +55,11 @@ export default function Home() {
 
   useEffect(() => {
     loadStatus();
-    const interval = setInterval(loadStatus, 15000); // Polling status every 15s
+    // Fast poll (1.5s) while connecting so the UI responds immediately once backend finishes booting; 15s thereafter
+    const pollInterval = status === null ? 1500 : 15000;
+    const interval = setInterval(loadStatus, pollInterval);
     return () => clearInterval(interval);
-  }, [loadStatus]);
+  }, [loadStatus, status]);
 
   // Keyboard shortcut support
   useEffect(() => {

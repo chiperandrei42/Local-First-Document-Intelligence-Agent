@@ -278,8 +278,13 @@ async function startBackendIfNeeded() {
   const dataDir = app.isPackaged ? path.join(userDataPath, 'data') : path.join(__dirname, '..', 'data');
   const exampleDataDir = app.isPackaged ? path.join(process.resourcesPath, 'example-data') : path.join(__dirname, '..', 'example-data');
 
-  // Check if running from packaged app with frozen backend executable
-  const packagedExe = path.join(process.resourcesPath, 'backend', process.platform === 'win32' ? 'backend.exe' : 'backend');
+  // Check if running from packaged app or pre-compiled frozen backend executable
+  const candidateExes = [
+    path.join(process.resourcesPath, 'backend', process.platform === 'win32' ? 'backend.exe' : 'backend'),
+    path.join(process.resourcesPath, 'backend', 'dist', 'backend', process.platform === 'win32' ? 'backend.exe' : 'backend'),
+    path.join(__dirname, '..', 'backend', 'dist', 'backend', process.platform === 'win32' ? 'backend.exe' : 'backend'),
+  ];
+  const packagedExe = candidateExes.find((exePath) => fs.existsSync(exePath));
 
   const env = {
     ...process.env,
@@ -293,7 +298,7 @@ async function startBackendIfNeeded() {
   };
 
   try {
-    if (app.isPackaged && fs.existsSync(packagedExe)) {
+    if (packagedExe && (app.isPackaged || fs.existsSync(packagedExe))) {
       console.log(`[Electron] Starting packaged backend executable: ${packagedExe}`);
       pythonProcess = spawn(packagedExe, [], {
         cwd: path.dirname(packagedExe),
@@ -336,11 +341,11 @@ async function startBackendIfNeeded() {
       pythonProcess = null;
     });
 
-    // Wait up to 3 seconds for backend port 8000 to become active
-    for (let i = 0; i < 6; i++) {
+    // Wait up to 15 seconds for backend port 8000 to become active (allows for PyInstaller cold-start unpacking)
+    for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 500));
       if (await checkPort('http://127.0.0.1:8000/api/status', 500)) {
-        console.log('[Electron] FastAPI backend confirmed online at http://127.0.0.1:8000');
+        console.log(`[Electron] FastAPI backend confirmed online at http://127.0.0.1:8000 (ready in ${(i + 1) * 0.5}s)`);
         break;
       }
     }

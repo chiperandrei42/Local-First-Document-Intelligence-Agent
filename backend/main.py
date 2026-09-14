@@ -51,7 +51,19 @@ async def root():
     }
 
 if __name__ == "__main__":
-    host = os.getenv("HOST", "0.0.0.0")
+    import multiprocessing
+    multiprocessing.freeze_support()
+
+    host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     is_dev = os.getenv("ENVIRONMENT", "").lower() == "development"
-    uvicorn.run("main:app", host=host, port=port, reload=is_dev)
+
+    # In PyInstaller frozen bundle, string "main:app" fails because the module is not an importable file on disk.
+    # Pass the FastAPI `app` object directly.
+    if getattr(sys, "frozen", False):
+        uvicorn.run(app, host=host, port=port)
+    elif is_dev:
+        uvicorn.run("main:app", host=host, port=port, reload=True)
+    else:
+        uvicorn.run(app, host=host, port=port)
+
