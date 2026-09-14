@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { SidebarNav } from '@/components/SidebarNav';
 import { DocumentSidebar } from '@/components/DocumentSidebar';
 import { ChatInterface } from '@/components/ChatInterface';
+import { OnboardingModal } from '@/components/OnboardingModal';
 import { fetchStatus } from '@/lib/api';
 import { StatusResponse } from '@/lib/types';
 
@@ -12,6 +13,8 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<string>('llama3.2');
   const [activeView, setActiveView] = useState<'chat' | 'documents' | 'settings'>('chat');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [hasCheckedFirstBoot, setHasCheckedFirstBoot] = useState<boolean>(false);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -21,12 +24,34 @@ export default function Home() {
       if (data.default_llm && !selectedModel) {
         setSelectedModel(data.default_llm);
       }
+      // Check first-boot guardrails: if Ollama is offline or required models missing, prompt setup
+      if (!hasCheckedFirstBoot && data) {
+        setHasCheckedFirstBoot(true);
+        const hasEmbed = data.available_models.some((m) => 
+          m.toLowerCase().includes('nomic-embed') || 
+          m.toLowerCase().includes('bge') || 
+          m.toLowerCase().includes('minilm') || 
+          m.toLowerCase().includes('embed')
+        );
+        const hasLlm = data.available_models.some((m) => 
+          m.toLowerCase().includes('llama') || 
+          m.toLowerCase().includes('mistral') || 
+          m.toLowerCase().includes('qwen') || 
+          m.toLowerCase().includes('gemma') || 
+          m.toLowerCase().includes('phi') || 
+          m.toLowerCase().includes('deepseek') || 
+          m.toLowerCase().includes('minicpm')
+        );
+        if (!data.ollama_connected || !hasEmbed || !hasLlm) {
+          setIsOnboardingOpen(true);
+        }
+      }
     } catch {
       setStatus(null);
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedModel]);
+  }, [selectedModel, hasCheckedFirstBoot]);
 
   useEffect(() => {
     loadStatus();
@@ -55,6 +80,7 @@ export default function Home() {
         status={status}
         activeView={activeView}
         onViewChange={(view) => setActiveView(activeView === view && view === 'documents' ? 'chat' : view)}
+        onOpenSetup={() => setIsOnboardingOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -69,8 +95,6 @@ export default function Home() {
           onRefreshData={loadStatus}
         />
 
-
-
         {/* Chat Interface (Always visible, might shift or get overlaid) */}
         <div className="flex-1 relative overflow-hidden">
           <ChatInterface
@@ -81,6 +105,14 @@ export default function Home() {
         </div>
         
       </div>
+
+      {/* 5-Step First-Boot & Hardware Guardrails Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        status={status}
+        onRefreshStatus={loadStatus}
+      />
     </main>
   );
 }

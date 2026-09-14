@@ -52,4 +52,15 @@ class StatusResponse(BaseModel):
     total_chunks: int
     documents: List[DocumentInfo]
 
+class SystemInfoResponse(BaseModel):
+    total_ram_gb: float
+    available_ram_gb: float
+    cpu_count: int
+    os_platform: str
+    ram_status: str
+    is_vram_safe: bool = True
+    recommended_llm: str = "llama3.2"
+    recommended_embed: str = "nomic-embed-text"
 
+class ModelPullRequest(BaseModel):
+    model: str = Field(description="Name of model to pull, e.g. nomic-embed-text or llama3.2")

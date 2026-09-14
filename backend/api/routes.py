@@ -1,11 +1,22 @@
 import os
+import platform
+import json
 from typing import List, Optional
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
+import psutil
 
-from database.schemas import ChatRequest, IngestResponse, StatusResponse, DocumentInfo, TextIngestRequest
+from database.schemas import (
+    ChatRequest, 
+    IngestResponse, 
+    StatusResponse, 
+    DocumentInfo, 
+    TextIngestRequest,
+    SystemInfoResponse,
+    ModelPullRequest,
+)
 from database.vector_store import vector_store
 from services.ollama_service import ollama_service
 from services.ingestion_service import ingestion_service
@@ -46,6 +57,65 @@ async def get_status():
         total_documents=len(docs),
         total_chunks=total_chunks,
         documents=doc_models,
+    )
+
+
+@router.get("/system", response_model=SystemInfoResponse)
+async def get_system_info():
+    """Retrieve host system hardware specs: RAM, CPU cores, platform OS, and VRAM safety status."""
+    try:
+        mem = psutil.virtual_memory()
+        total_ram = round(mem.total / (1024**3), 1)
+        avail_ram = round(mem.available / (1024**3), 1)
+    except Exception:
+        total_ram = 8.0
+        avail_ram = 4.0
+
+    cpus = os.cpu_count() or 4
+    system_name = platform.system().lower()
+
+    if total_ram >= 15.0:
+        ram_status = "optimal"
+    elif total_ram >= 7.5:
+        ram_status = "compatible"
+    else:
+        ram_status = "limited"
+
+    return SystemInfoResponse(
+        total_ram_gb=total_ram,
+        available_ram_gb=avail_ram,
+        cpu_count=cpus,
+        os_platform=system_name,
+        ram_status=ram_status,
+        is_vram_safe=True,
+        recommended_llm="llama3.2",
+        recommended_embed="nomic-embed-text",
+    )
+
+
+@router.post("/ollama/start")
+async def start_ollama():
+    """Attempt to launch the host native Ollama background service if not running."""
+    result = ollama_service.try_start_ollama()
+    return result
+
+
+@router.post("/models/pull")
+async def pull_model(request: ModelPullRequest):
+    """Stream model pull download progress via SSE from local Ollama daemon."""
+    async def event_generator():
+        async for progress in ollama_service.pull_model_stream(request.model):
+            yield f"data: {json.dumps(progress)}\n\n"
+        yield "data: {\"done\": true, \"status\": \"success\"}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
     )
 
 

@@ -116,6 +116,84 @@ class OllamaService:
                         except Exception:
                             continue
 
+    async def pull_model_stream(self, model_name: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Stream progress while pulling a model via Ollama daemon."""
+        async with httpx.AsyncClient(timeout=None) as client:
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/api/pull",
+                    json={"name": model_name, "stream": True},
+                ) as response:
+                    if response.status_code != 200:
+                        yield {"status": "error", "message": f"Ollama returned HTTP {response.status_code}"}
+                        return
+
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        try:
+                            import json
+                            data = json.loads(line)
+                            status_text = data.get("status", "")
+                            completed = data.get("completed", 0)
+                            total = data.get("total", 0)
+                            percent = int((completed / total) * 100) if total > 0 else 0
+                            yield {
+                                "status": status_text,
+                                "digest": data.get("digest", ""),
+                                "total": total,
+                                "completed": completed,
+                                "percent": percent,
+                                "done": status_text == "success",
+                            }
+                        except Exception:
+                            continue
+            except Exception as e:
+                yield {"status": "error", "message": str(e)}
+
+    def try_start_ollama(self) -> Dict[str, Any]:
+        """Attempt to launch the local Ollama background service if installed."""
+        import shutil
+        import subprocess
+
+        ollama_bin = shutil.which("ollama")
+        if not ollama_bin:
+            local_app_data = os.getenv("LOCALAPPDATA", "")
+            if local_app_data:
+                win_path = os.path.join(local_app_data, "Programs", "Ollama", "ollama.exe")
+                if os.path.exists(win_path):
+                    ollama_bin = win_path
+
+        if not ollama_bin:
+            return {
+                "success": False,
+                "message": "Ollama executable not found on host. Please install from https://ollama.com.",
+                "installed": False,
+            }
+
+        try:
+            if os.name == "nt":
+                subprocess.Popen(
+                    [ollama_bin, "serve"],
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                    shell=False,
+                )
+            else:
+                subprocess.Popen([ollama_bin, "serve"], start_new_session=True)
+
+            return {
+                "success": True,
+                "message": f"Launched Ollama daemon from {ollama_bin}.",
+                "installed": True,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Failed to launch Ollama: {str(e)}",
+                "installed": True,
+            }
+
 ollama_service = OllamaService()
 
 

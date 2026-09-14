@@ -1,0 +1,71 @@
+{
+  "name": "cetera-desktop",
+  "version": "1.0.0",
+  "description": "Privacy-First Local Document RAG Desktop Application",
+  "author": "Cetera Team",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:backend": "python backend/main.py",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:desktop": "concurrently -k -n backend,frontend,electron -c blue,magenta,green \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://127.0.0.1:3000 && electron .\"",
+    "electron": "electron .",
+    "electron:dev": "wait-on http://127.0.0.1:3000 && electron .",
+    "build:frontend": "npm run build --prefix frontend",
+    "pack": "electron-builder"
+  },
+  "build": {
+    "appId": "com.cetera.localrag",
+    "productName": "Cetera",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/.pytest_cache/**",
+          "!**/chroma_db/**"
+        ]
+      },
+      {
+        "from": "example-data",
+        "to": "example-data"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "frontend/public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cetera"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "frontend/public/icon.png",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "frontend/public/icon.png",
+      "category": "Office"
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.1"
+  }
+}

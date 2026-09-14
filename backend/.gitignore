@@ -19,3 +19,6 @@ __pycache__/
 venv/
 env/
 *.log
+build/
+dist/
+*.spec

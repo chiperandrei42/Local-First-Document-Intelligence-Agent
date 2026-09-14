@@ -14,9 +14,10 @@ interface SidebarNavProps {
   status: StatusResponse | null;
   activeView: 'chat' | 'documents' | 'settings';
   onViewChange: (view: 'chat' | 'documents' | 'settings') => void;
+  onOpenSetup: () => void;
 }
 
-export function SidebarNav({ status, activeView, onViewChange }: SidebarNavProps) {
+export function SidebarNav({ status, activeView, onViewChange, onOpenSetup }: SidebarNavProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
@@ -111,13 +112,32 @@ export function SidebarNav({ status, activeView, onViewChange }: SidebarNavProps
 
       </div>
 
-      {/* Clean Minimalist Status Indicator (Exact 40x40 Alignment) */}
-      <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
-        <div 
-          className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"
-          title="Local Enclave Online"
-        />
-      </div>
+      {/* Clean Minimalist Status Indicator / Setup Trigger */}
+      <button
+        onClick={onOpenSetup}
+        title="Setup & System Hardware Telemetry"
+        className="w-full cursor-pointer flex items-center h-10 rounded-xl overflow-hidden text-white/50 hover:text-white hover:bg-white/[0.05] transition-colors"
+      >
+        <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
+          <div 
+            className={`w-2.5 h-2.5 rounded-full ${
+              status?.ollama_connected 
+                ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]' 
+                : 'bg-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.8)]'
+            }`}
+          />
+        </div>
+        <div className={`w-[180px] flex-shrink-0 flex items-center pl-3 pr-3 whitespace-nowrap transition-opacity duration-150 ${
+          isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-white/80">Hardware & AI Engine</p>
+            <p className="text-[10px] text-white/40">
+              {status?.ollama_connected ? 'Air-Gap Online' : 'Setup Required'}
+            </p>
+          </div>
+        </div>
+      </button>
     </aside>
   );
 }

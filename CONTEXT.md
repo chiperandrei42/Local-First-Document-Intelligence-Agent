@@ -41,3 +41,11 @@ To build a state-of-the-art, 100% private, locally-hosted Retrieval-Augmented Ge
   - [x] Cosine similarity retrieval verified with high confidence scores (>86%)
   - [x] `nomic-embed-text` and `llama3.2` models pulled and verified in Ollama
 - [x] Comprehensive documentation (`README.md`) detailing privacy guarantees, VRAM memory engineering, and quickstart instructions.
+- [x] Native Electron Desktop App Transformation (based on `future.md`):
+  - [x] Root orchestration package (`package.json`) with `dev:desktop`, `electron`, and `pack` commands.
+  - [x] Electron Main process (`electron/main.js`) with child process management, port probing, and clean cleanup on exit.
+  - [x] Preload IPC bridge (`electron/preload.js`) exposing safe `window.electronAPI`.
+  - [x] Host hardware diagnostics endpoint (`/api/system`) with `psutil` memory tracking.
+  - [x] Model lazy-pulling streaming SSE endpoint (`/api/models/pull`) and auto-launch service (`/api/ollama/start`).
+  - [x] 5-Step First-Boot Onboarding & Hardware Guardrails Wizard (`components/OnboardingModal.tsx`).
+  - [x] Updated `README.md` with desktop architecture diagram, first-boot workflow, and packaging instructions.

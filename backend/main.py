@@ -1,13 +1,20 @@
 import os
+import sys
+from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from api.routes import router as api_router
-from database.vector_store import vector_store
+# Ensure current script directory is in sys.path for robust subpackage importing
+CURRENT_DIR = Path(__file__).resolve().parent
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
 
 load_dotenv()
+
+from api.routes import router as api_router
+from database.vector_store import vector_store
 
 app = FastAPI(
     title="Local-First Document Intelligence Agent",
@@ -46,5 +53,5 @@ async def root():
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
-    print(f"🚀 Starting Local RAG Server on http://{host}:{port}")
-    uvicorn.run("main:app", host=host, port=port, reload=True)
+    is_dev = os.getenv("ENVIRONMENT", "").lower() == "development"
+    uvicorn.run("main:app", host=host, port=port, reload=is_dev)

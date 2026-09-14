@@ -1,5 +1,12 @@
-import { StatusResponse, DocumentInfo, IngestResponse, Citation, Message } from './types';
-
+import { 
+  StatusResponse, 
+  DocumentInfo, 
+  IngestResponse, 
+  Citation, 
+  Message,
+  SystemInfo,
+  ModelPullProgress 
+} from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
@@ -11,6 +18,115 @@ export async function fetchStatus(): Promise<StatusResponse> {
     throw new Error(`Failed to fetch status: ${res.statusText}`);
   }
   return res.json();
+}
+
+export async function fetchSystemInfo(): Promise<SystemInfo> {
+  const res = await fetch(`${API_BASE}/api/system`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch system specs: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function startOllamaService(): Promise<{ success: boolean; message: string; installed?: boolean }> {
+  // 1. If running inside Electron desktop shell, trigger native execution directly
+  if (typeof window !== 'undefined' && window.electronAPI?.startOllama) {
+    try {
+      const nativeRes = await window.electronAPI.startOllama();
+      if (nativeRes.success) {
+        return { success: true, message: nativeRes.message, installed: true };
+      }
+    } catch {
+      // Fallback to HTTP endpoint
+    }
+  }
+
+  // 2. HTTP endpoint fallback
+  try {
+    const res = await fetch(`${API_BASE}/api/ollama/start`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      return {
+        success: false,
+        message: `Backend returned status ${res.status}`,
+        installed: false,
+      };
+    }
+    return await res.json();
+  } catch (err: unknown) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Backend connection initializing',
+      installed: false,
+    };
+  }
+}
+
+export async function pullModelStream(
+  model: string,
+  onProgress: (progress: ModelPullProgress) => void,
+  onDone: () => void,
+  onError: (error: string) => void
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/models/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model }),
+  });
+
+  if (!res.ok) {
+    onError(`Server returned ${res.status}: ${res.statusText}`);
+    return;
+  }
+
+  if (!res.body) {
+    onError('No response body received');
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+
+        const dataStr = trimmed.slice(5).trim();
+        if (!dataStr) continue;
+
+        try {
+          const payload = JSON.parse(dataStr);
+          if (payload.status === 'error') {
+            onError(payload.message || 'Model pull error');
+            return;
+          }
+          onProgress(payload);
+          if (payload.done) {
+            onDone();
+            return;
+          }
+        } catch {
+          // Fragmented JSON
+        }
+      }
+    }
+    onDone();
+  } catch (err: unknown) {
+    onError(err instanceof Error ? err.message : String(err));
+  }
 }
 
 export async function fetchDocuments(): Promise<DocumentInfo[]> {
