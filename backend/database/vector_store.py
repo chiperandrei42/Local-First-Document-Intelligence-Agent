@@ -13,10 +13,27 @@ class VectorStoreService:
         self.persist_dir = persist_dir
         os.makedirs(self.persist_dir, exist_ok=True)
         self.client = chromadb.PersistentClient(path=self.persist_dir)
-        self.collection = self.client.get_or_create_collection(
-            name=COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"}
-        )
+        self._collection = None
+
+    @property
+    def collection(self):
+        """Self-healing collection getter that handles recreations or stale UUIDs."""
+        try:
+            if self._collection is None:
+                self._collection = self.client.get_or_create_collection(
+                    name=COLLECTION_NAME,
+                    metadata={"hnsw:space": "cosine"}
+                )
+            # Test validity
+            self._collection.count()
+            return self._collection
+        except Exception:
+            self._collection = self.client.get_or_create_collection(
+                name=COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"}
+            )
+            return self._collection
+
 
     def add_chunks(
         self,
@@ -116,11 +133,15 @@ class VectorStoreService:
 
     def clear_collection(self) -> None:
         """Clear all stored vectors and documents."""
-        self.client.delete_collection(name=COLLECTION_NAME)
-        self.collection = self.client.get_or_create_collection(
+        try:
+            self.client.delete_collection(name=COLLECTION_NAME)
+        except Exception:
+            pass
+        self._collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"}
         )
+
 
     def delete_document_by_name(self, filename: str) -> int:
         """Delete all chunks belonging to a specific document."""

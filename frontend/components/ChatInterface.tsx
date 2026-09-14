@@ -11,10 +11,8 @@ import {
   Layers, 
   Bot,
   Zap,
-  ArrowRight,
   Terminal,
-  Cpu,
-  Lock
+  Cpu
 } from 'lucide-react';
 
 import { Message, Citation } from '@/lib/types';
@@ -27,29 +25,6 @@ interface ChatInterfaceProps {
   totalDocs: number;
   onOpenSidebar: () => void;
 }
-
-const STARTER_PROMPTS = [
-  {
-    tag: 'ARCH_01',
-    title: 'Local RAG Architecture',
-    prompt: 'What are the core pillars of Local-First RAG and how is zero-data exfiltration guaranteed?',
-  },
-  {
-    tag: 'HW_02',
-    title: '8GB VRAM Optimization',
-    prompt: 'How is memory managed to stay within the 8GB VRAM hardware limit during ingestion and inference?',
-  },
-  {
-    tag: 'SEC_03',
-    title: 'Data Privacy Policy',
-    prompt: 'Summarize the private data processing rules in Project Falcon.',
-  },
-  {
-    tag: 'PERF_04',
-    title: 'Hardware Benchmarks',
-    prompt: 'What are the edge hardware benchmark results (TTFT, throughput, ingestion speed)?',
-  },
-];
 
 const GREETING_OPTIONS = [
   'Where would you like to begin?',
@@ -227,11 +202,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold tracking-widest text-white/60 mb-5 uppercase">
-                <Lock className="h-3.5 w-3.5 text-[#614DFF]" />
-                <span>Secure Local Enclave</span>
-              </div>
-
               <h2 
                 suppressHydrationWarning
                 className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-sans mb-3"
@@ -239,14 +209,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 {greeting}
               </h2>
 
-
-
-
               <p className="max-w-md text-base leading-relaxed text-white/40">
                 What shall we analyze today? All intelligence remains strictly offline on your hardware.
               </p>
-
-
 
               {/* Status Alert if No Documents */}
               {totalDocs === 0 ? (
@@ -261,32 +226,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   </button>
                 </div>
               ) : null}
-
-              {/* Starter Query Cards Grid */}
-              <div className="mt-12 grid w-full max-w-3xl grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                {STARTER_PROMPTS.map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendMessage(item.prompt)}
-                    className="group cursor-pointer flex flex-col justify-between rounded-3xl p-6 text-left border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04] transition-all duration-300 active:scale-[0.98] shadow-lg backdrop-blur-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="rounded-lg bg-[#614DFF]/10 px-2 py-1 text-[10px] font-bold text-[#614DFF] uppercase tracking-wider">
-                          {item.tag}
-                        </span>
-                        <span className="text-sm font-semibold text-white/90">
-                          {item.title}
-                        </span>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-white/80 group-hover:translate-x-1 transition-all duration-300" />
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-white/40 group-hover:text-white/60 transition-colors duration-300 line-clamp-2">
-                      {item.prompt}
-                    </p>
-                  </button>
-                ))}
-              </div>
 
             </div>
           ) : null}

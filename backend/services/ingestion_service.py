@@ -5,6 +5,8 @@ from pathlib import Path
 from database.vector_store import vector_store
 from services.ollama_service import ollama_service
 
+
+
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError:
@@ -56,22 +58,8 @@ class IngestionService:
             chunk_overlap=CHUNK_OVERLAP,
         )
 
-    async def perform_native_ocr(self, image_bytes: bytes) -> str:
-        """Built-in native local OCR engine (0-model downloads required, runs instantly on CPU)."""
-        try:
-            import winocr
-            from PIL import Image
-            import io
-            pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-            result = await winocr.recognize_pil(pil_img, lang="en")
-            if result and getattr(result, "text", None) and result.text.strip():
-                return result.text.strip()
-        except Exception:
-            pass
-        return ""
-
     async def extract_text_from_pdf(self, file_bytes: bytes, filename: str) -> List[Tuple[str, int]]:
-        """Extract text from PDF pages, falling back to local Vision VLM and built-in Native OCR."""
+        """Extract digital text from PDF pages using PyMuPDF and PyPDF fallbacks."""
         pages_content: List[Tuple[str, int]] = []
         page_count = 0
 
@@ -115,24 +103,6 @@ class IngestionService:
                     if widgets_text:
                         text = "\n".join(widgets_text)
 
-                # Pass 4 & 5: Visual Handwriting / Scan Transcription
-                if not text:
-                    try:
-                        pix = page.get_pixmap(dpi=150)
-                        img_bytes = pix.tobytes("png")
-                        
-                        # Try Local Vision AI (e.g. llama3.2-vision)
-                        transcribed = await ollama_service.transcribe_image(img_bytes)
-                        if transcribed and transcribed.strip():
-                            text = transcribed.strip()
-                        else:
-                            # Built-in Native OS OCR Fallback (instant, 0-download)
-                            native_text = await self.perform_native_ocr(img_bytes)
-                            if native_text and native_text.strip():
-                                text = native_text.strip()
-                    except Exception:
-                        pass
-
                 if text and text.strip():
                     pages_content.append((text.strip(), page_idx + 1))
 
@@ -164,8 +134,8 @@ class IngestionService:
         # Diagnostic message if PDF has pages but contains zero extractable digital text
         if not pages_content and page_count > 0:
             raise ValueError(
-                f"PDF '{filename}' ({page_count} page(s)) contains no extractable text. "
-                "You can install the 1-Click Vision AI model in the storage panel for deep handwriting recognition."
+                f"PDF '{filename}' ({page_count} page(s)) contains no extractable digital text. "
+                "Please ensure the document contains a searchable text layer."
             )
 
         return pages_content
@@ -198,36 +168,7 @@ class IngestionService:
                     ids.append(chunk_id)
                     total_chunks += 1
 
-        elif ext in [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"]:
-            file_type = "image"
-            # 1. Try Vision VLM
-            transcribed_text = await ollama_service.transcribe_image(content_bytes)
-            # 2. Try Native Built-in OCR
-            if not transcribed_text:
-                transcribed_text = await self.perform_native_ocr(content_bytes)
-
-            if not transcribed_text:
-                raise ValueError(
-                    f"Image '{filename}' contains visual/handwritten content. "
-                    "Install the 1-Click Vision AI in the storage sidebar to transcribe it."
-                )
-            splits = self.text_splitter.split_text(transcribed_text)
-            for split_idx, split_text in enumerate(splits):
-                clean_text = split_text.strip()
-                if not clean_text:
-                    continue
-                chunk_id = hashlib.sha256(f"{filename}_{split_idx}_{clean_text[:30]}".encode()).hexdigest()[:16]
-                chunks.append(clean_text)
-                metadatas.append({
-                    "source": filename,
-                    "file_type": file_type,
-                    "page": 1,
-                    "chunk_index": split_idx,
-                })
-                ids.append(chunk_id)
-
-
-        else:
+        elif ext in [".md", ".markdown", ".txt"]:
             file_type = "md" if ext in [".md", ".markdown"] else "txt"
             text_content = content_bytes.decode("utf-8", errors="replace")
             splits = self.text_splitter.split_text(text_content)
@@ -244,6 +185,11 @@ class IngestionService:
                     "chunk_index": split_idx,
                 })
                 ids.append(chunk_id)
+
+        else:
+            raise ValueError(
+                f"Unsupported file format '{ext}'. Supported formats are: .pdf, .md, .txt"
+            )
 
         if not chunks:
             return {"filename": filename, "chunks": 0, "status": "empty_or_unreadable"}
@@ -270,6 +216,56 @@ class IngestionService:
             "status": "indexed",
         }
 
+    async def process_text_note(self, title: str, content: str) -> Dict[str, Any]:
+        """Ingest plain text or markdown note directly into vector storage."""
+        filename = title.strip() or "Untitled Note"
+        if not any(filename.endswith(ext) for ext in [".md", ".txt", ".note"]):
+            filename = f"{filename}.md"
+
+        chunks: List[str] = []
+        metadatas: List[Dict[str, Any]] = []
+        ids: List[str] = []
+
+        splits = self.text_splitter.split_text(content)
+        for split_idx, split_text in enumerate(splits):
+            clean_text = split_text.strip()
+            if not clean_text:
+                continue
+            chunk_id = hashlib.sha256(f"{filename}_{split_idx}_{clean_text[:30]}".encode()).hexdigest()[:16]
+            chunks.append(clean_text)
+            metadatas.append({
+                "source": filename,
+                "file_type": "note",
+                "page": 1,
+                "chunk_index": split_idx,
+            })
+            ids.append(chunk_id)
+
+        if not chunks:
+            return {"filename": filename, "chunks": 0, "file_type": "note", "status": "empty"}
+
+        # Generate embeddings in controlled batches
+        all_embeddings: List[List[float]] = []
+        for i in range(0, len(chunks), BATCH_SIZE):
+            batch_chunks = chunks[i : i + BATCH_SIZE]
+            batch_embeddings = await ollama_service.get_embeddings(batch_chunks)
+            all_embeddings.extend(batch_embeddings)
+
+        added_count = vector_store.add_chunks(
+            chunks=chunks,
+            metadatas=metadatas,
+            ids=ids,
+            embeddings=all_embeddings,
+        )
+
+        return {
+            "filename": filename,
+            "chunks": added_count,
+            "file_type": "note",
+            "status": "indexed",
+        }
+
+
     async def ingest_directory(self, dir_path: str) -> Dict[str, Any]:
         """Ingest all supported documents from a directory."""
         path = Path(dir_path)
@@ -282,7 +278,7 @@ class IngestionService:
                 "details": f"Directory '{dir_path}' does not exist.",
             }
 
-        supported_extensions = {".pdf", ".md", ".markdown", ".txt", ".csv", ".json", ".png", ".jpg", ".jpeg", ".webp"}
+        supported_extensions = {".pdf", ".md", ".markdown", ".txt"}
         processed_files = []
         total_chunks = 0
 

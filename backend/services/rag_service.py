@@ -4,8 +4,8 @@ from database.vector_store import vector_store
 from services.ollama_service import ollama_service
 from database.schemas import ChatMessage
 
-SYSTEM_PROMPT_TEMPLATE = """You are an intelligent, local-first document analysis agent.
-Your objective is to provide precise, well-structured, and factual answers based strictly on the provided document context.
+SYSTEM_PROMPT_TEMPLATE = """You are an intelligent, local-first document intelligence agent.
+Your objective is to provide precise, coherent, and well-structured answers based on the provided document context.
 
 Context from indexed documents:
 ---------------------
@@ -13,11 +13,13 @@ Context from indexed documents:
 ---------------------
 
 Instructions:
-1. Use the provided context to answer the user's inquiry thoroughly.
-2. Format your response with clear Markdown (headers, bullet points, code blocks when applicable).
-3. Cite your sources directly inline or at the end of key points using the format: `[Source: <filename>, Page: <page>]`.
-4. If the provided context does not contain enough information to answer the question, state: "The indexed documents do not contain enough information to answer this question directly."
-5. Never invent or hallucinate references."""
+1. Answer the user's inquiry clearly, synthesizing the main message, themes, facts, and entities from the document context.
+2. Provide a clear, natural explanation or summary in fluent language.
+3. Format your response with clean Markdown (headers, bullet points, structured summaries).
+4. Cite your sources using `[Source: <filename>, Page: <page>]`.
+5. If the provided context does not contain enough information to answer, state: "The indexed documents do not contain enough information to answer this question directly."
+6. Never invent facts or hallucinate references not supported by the context."""
+
 
 class RAGService:
     async def stream_query(

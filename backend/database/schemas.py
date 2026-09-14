@@ -37,8 +37,10 @@ class DocumentInfo(BaseModel):
     source_type: str
     pages: Optional[int] = None
 
-class PullModelRequest(BaseModel):
-    model: str = "llama3.2-vision"
+class TextIngestRequest(BaseModel):
+    title: str = Field(description="Title or filename for the note (e.g. meeting_notes.md)")
+    content: str = Field(description="Plain text or markdown content of the note")
+    source_type: Optional[str] = "note"
 
 class StatusResponse(BaseModel):
     ollama_connected: bool
@@ -46,10 +48,8 @@ class StatusResponse(BaseModel):
     available_models: List[str]
     default_llm: str
     default_embed: str
-    has_vision_model: bool = False
-    vision_model: Optional[str] = None
-    recommended_vision_model: Optional[str] = "llama3.2-vision"
     total_documents: int
     total_chunks: int
     documents: List[DocumentInfo]
+
 

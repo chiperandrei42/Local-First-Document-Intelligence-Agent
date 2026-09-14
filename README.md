@@ -1,13 +1,13 @@
-# Local-First Document Intelligence Agent (RAG)
+# Local-First Document Intelligence Agent (Cetera)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
-[![Privacy: 100% Air-Gapped](https://img.shields.io/badge/Privacy-100%25%20Air--Gapped-cyan.svg)](#data-privacy--zero-data-exfiltration-architecture)
-[![VRAM: 8GB Optimized](https://img.shields.io/badge/Hardware-8GB%20VRAM%20Safe-indigo.svg)](#memory-management--8gb-vram-optimization)
-[![Stack: FastAPI + Next.js](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%2015%20%7C%20ChromaDB-blue.svg)](#tech-stack--architecture)
+[![Privacy: 100% Air-Gapped](https://img.shields.io/badge/Privacy-100%25%20Air--Gapped-cyan.svg)](#key-features--invariants)
+[![VRAM: 8GB Optimized](https://img.shields.io/badge/Hardware-8GB%20VRAM%20Safe-indigo.svg)](#2-memory-engineering--8gb-vram-footprint)
+[![Stack: FastAPI + Next.js](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20ChromaDB-blue.svg)](#tech-stack)
 
-A high-performance, **100% private and locally-hosted Retrieval-Augmented Generation (RAG) system**. Ingest private documents (PDFs, Markdown, plain text), compute local embeddings, and interact with your knowledge base using state-of-the-art local LLMs running entirely on your machine.
+A high-performance, **100% private, locally-hosted Retrieval-Augmented Generation (RAG) system**. Ingest private documents (PDFs, Markdown, plain text) and quick clipboard notes, compute local embeddings, and interact with your knowledge base using state-of-the-art local LLMs running entirely on your machine.
 
-**Zero telemetry. Zero external API keys. Zero cloud data exfiltration.**
+**Zero external telemetry. Zero cloud API keys. Zero data exfiltration.**
 
 ---
 
@@ -15,72 +15,83 @@ A high-performance, **100% private and locally-hosted Retrieval-Augmented Genera
 
 ```mermaid
 flowchart TB
-    subgraph Client["Frontend (Next.js 15 + TypeScript + Tailwind + GSAP)"]
-        UI["Chat UI & Streaming Renderer"]
-        DocMgr["Document Manager & Dropzone"]
-        Inspector["Source Context Inspector"]
+    subgraph Client["Frontend (Next.js App Router + TypeScript + Tailwind CSS v4)"]
+        Nav["SidebarNav (Telemetry & Ollama Live Status)"]
+        UI["ChatInterface (Minimalist Hero, Dynamic Greeting & Token Streamer)"]
+        Bubble["MessageBubble (Markdown Renderer & Clickable Citation Pills)"]
+        DocSidebar["DocumentSidebar (Drag & Drop, Folder Indexing, Doc Deletion)"]
+        NoteModal["NewNoteModal (Direct Text Note & Clipboard Ingestion)"]
+        Inspector["SourceInspectorModal (Context Inspector & Similarity Scores)"]
     end
 
-    subgraph Server["Backend (FastAPI)"]
-        API["API Router (/chat, /ingest, /documents, /status, /clear)"]
-        IngestService["Ingestion Engine & Recursive Chunking"]
-        RAGService["RAG Query & Citation Formatter"]
-        ChromaStore["ChromaDB Vector Store (Persistent ./chroma_db)"]
+    subgraph Server["Backend (FastAPI Asynchronous Engine)"]
+        API["API Router (/chat, /ingest, /ingest/text, /documents, /status, /clear)"]
+        IngestService["Ingestion Engine (PyMuPDF / PyPDF + Recursive Text Splitter)"]
+        RAGService["RAG Query Service & Grounded Citation Formatter"]
+        ChromaStore["ChromaDB (Persistent Cosine Vector Store at ./backend/chroma_db)"]
     end
 
-    subgraph LocalEngine["Local AI Daemon (Ollama :11434)"]
-        Embedder["nomic-embed-text (Embedding Model)"]
-        LLM["llama3.2 / llama3.1 (Quantized LLM)"]
+    subgraph LocalEngine["Local AI Engine (Ollama :11434)"]
+        Embedder["nomic-embed-text (768-dim Embedding Model)"]
+        LLM["llama3.2 / llama3.1 (Quantized Local LLM)"]
     end
 
-    DocMgr -->|Uploads / Directory Indexing| API
-    UI -->|SSE Query Stream| API
+    Nav -->|Toggle Views & Status| UI
+    DocSidebar -->|File Uploads / Ingest Folders| API
+    NoteModal -->|Direct Markdown / Text Ingest| API
+    UI -->|SSE Query Stream POST /api/chat| API
     API --> IngestService
     API --> RAGService
-    IngestService -->|Batch Embed Chunks| Embedder
-    IngestService -->|Persist Embeddings| ChromaStore
+    IngestService -->|Micro-Batch Embeddings (Batch Size 16)| Embedder
+    IngestService -->|Store Chunks & Metadata| ChromaStore
     RAGService -->|Embed User Query| Embedder
-    RAGService -->|Top-K Cosine Retrieval| ChromaStore
-    RAGService -->|Grounding Prompt + History| LLM
+    RAGService -->|Cosine Similarity Retrieval| ChromaStore
+    RAGService -->|Grounding Prompt + Chat History| LLM
     LLM -->|Token-by-Token SSE Stream| UI
-    RAGService -->|Source Citations & Match Scores| Inspector
+    RAGService -->|Pre-Token Citations & Chunk IDs| Inspector
+    Bubble -->|Inspect Sources| Inspector
 ```
 
 ---
 
-## Key Engineering Challenges & Solutions
+## Key Features & Invariants
 
-### 1. Data Privacy & Zero Data Exfiltration Architecture
-- **Complete Air-Gapped Operation**: All embedding generation, vector indexing, similarity calculations, and generative token prediction execute strictly over the local loopback interface (`127.0.0.1`).
-- **Local Persistent Vector Store**: Documents and vector embeddings are stored inside a local file-backed **ChromaDB** instance (`./backend/chroma_db`), eliminating any external cloud database dependencies.
-- **Strict Privacy Invariants**:
-  - Personal documents placed in `/data` are protected by strict `.gitignore` rules to guarantee user files can never be committed to version control.
-  - A dedicated public `/example-data` folder is provided for testing and verification without exposing confidential user files.
+### 1. 100% Air-Gapped Data Privacy
+- **Zero Cloud Footprint**: All embeddings, vector storage, indexing, and generative inferences execute strictly through the local loopback interface (`127.0.0.1:11434`).
+- **Data Isolation**: 
+  - User private documents placed in `/data` are protected by `.gitignore` rules to guarantee private files are never committed to version control.
+  - Public test documents are isolated in `/example-data` for testing and benchmarking without exposing confidential data.
 
-### 2. Memory Management & 8GB VRAM Optimization
-Running RAG systems locally on consumer GPUs (e.g. RTX 3060/4060 8GB VRAM) requires careful memory budgeting:
-- **Quantized Generation Model**: Optimized for `llama3.2` (3B parameters) or `llama3.1` (8B 4-bit Q4_K_M quantization). Peak autoregressive VRAM consumption remains between **2.2GB and 2.8GB**.
-- **Compact High-Quality Embeddings**: Utilizes `nomic-embed-text` (768 embedding dimensions, 8192 token context window) with a VRAM footprint of **<500MB**.
-- **Controlled Batch Ingestion**: Document chunks are processed and embedded in micro-batches (batch size: 16) to prevent GPU memory spikes during large PDF processing.
-- **Bounded Context Footprint**: Chat history is automatically windowed to the most recent turns, keeping the Key-Value (KV) cache bounded below **1.5GB**.
+### 2. Memory Engineering & 8GB VRAM Footprint
+Engineered specifically to run comfortably on consumer-grade hardware and standard office laptops (e.g., RTX 3060/4060 or Apple Silicon):
+- **Lightweight Inference**: Tested with `llama3.2` (3B parameters, ~2.2GB VRAM) and `llama3.1` (8B 4-bit Q4_K_M quantization, ~4.5GB VRAM).
+- **Compact High-Quality Embeddings**: Employs `nomic-embed-text` (768 embedding dimensions, 8192 token context window) with a VRAM footprint of **<500MB**.
+- **Controlled Ingestion Batches**: Document chunks are embedded in micro-batches (batch size: 16) to prevent GPU memory saturation.
+- **Zero Heavy ML Overhead**: Minimal, lean backend without massive computer vision or PyTorch weights.
 
-### 3. Bridging the Frontend and Backend (SSE Streaming & Citations)
-- **Server-Sent Events (SSE) Protocol**: Real-time token streaming via FastAPI's `StreamingResponse` using an event-driven payload format (`data: {"type": "token", "token": "..."}`).
-- **Pre-Token Citation Dispatch**: The backend sends the retrieved citations, chunk IDs, page numbers, and cosine similarity scores (`{"type": "citations", "data": [...]}`) **immediately** before the first LLM token is generated.
-- **Interactive Context Inspector**: Users can click any citation pill on assistant messages to open the **Source Context Inspector**, revealing the exact grounded text chunk, source document, page number, and similarity confidence percentage.
+### 3. Multi-Format Ingestion Engine
+- **PDF Documents**: Dual-pass digital text extraction using **PyMuPDF** (`fitz`) with automatic fallback to **PyPDF**.
+- **Markdown & Plain Text**: Native ingestion of `.md`, `.markdown`, and `.txt` files with intelligent recursive chunking.
+- **Quick Notes & Clipboard Ingestion**: Direct note ingestion dialog (**NewNoteModal**) for pasting meeting minutes, research summaries, or draft text directly into vector memory.
+- **Granular Management**: Delete individual documents or clear the entire database with instant UI reflection.
+
+### 4. Fluid SSE Streaming & Grounded Citations
+- **Real-Time Token Streaming**: Server-Sent Events (SSE) via FastAPI's `StreamingResponse` deliver zero-latency typing effects.
+- **Pre-Token Citation Dispatch**: The backend emits citation metadata (`{"type": "citations", "data": [...]}`) before token generation begins, ensuring the UI immediately identifies source attribution.
+- **Context Chunk Inspector**: Click any inline citation pill to slide open the inspector drawer and examine the exact source text, page number, and similarity confidence score.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
+| Layer | Technology | Description |
 | :--- | :--- | :--- |
-| **Frontend** | Next.js 15 (App Router), TypeScript | Ultra-responsive UI with server and client components |
-| **Styling & Motion** | Tailwind CSS v4, GSAP | Dark glassmorphic aesthetic, micro-animations, and drawer transitions |
-| **Backend** | FastAPI, Uvicorn | High-throughput asynchronous Python REST & SSE server |
-| **Vector Database** | ChromaDB (Persistent) | Local file-backed HNSW cosine vector index |
-| **RAG Orchestration** | LangChain / Python services | Multi-format parsing, recursive text splitting, prompt grounding |
-| **LLM Engine** | Ollama (`http://localhost:11434`) | Local execution of `llama3.2` and `nomic-embed-text` |
+| **Frontend UI** | Next.js (App Router), React 19, TypeScript | Server and Client components with modern modular architecture |
+| **Styling & Icons** | Tailwind CSS v4, Lucide React | Glassmorphic dark theme (`#060607`), glowing violet accents (`#614DFF`) |
+| **Backend API** | FastAPI, Uvicorn, Pydantic v2 | High-throughput asynchronous Python REST & SSE endpoints |
+| **Vector Store** | ChromaDB (Persistent) | Local file-backed HNSW cosine vector index at `./backend/chroma_db` |
+| **Document Processing** | PyMuPDF, PyPDF, LangChain Text Splitters | Robust PDF parsing, block extraction, and recursive text chunking |
+| **Local AI Engine** | Ollama (`http://localhost:11434`) | Air-gapped local model daemon serving embeddings and chat completions |
 
 ---
 
@@ -88,47 +99,78 @@ Running RAG systems locally on consumer GPUs (e.g. RTX 3060/4060 8GB VRAM) requi
 
 ```text
 /local-rag-agent
-├── /frontend               # Next.js 15 TypeScript application
-│   ├── /app                # App Router (page.tsx, layout.tsx, globals.css)
-│   ├── /components         # Header, ChatInterface, MessageBubble, DocumentSidebar, SourceInspector
-│   └── /lib                # API fetching client (SSE stream reader) and TypeScript types
-├── /backend                # FastAPI Python application
-│   ├── main.py             # FastAPI entry point & CORS configuration
-│   ├── /api                # REST routes (/chat, /ingest, /documents, /status, /clear)
-│   ├── /services           # Ollama client, Document Ingestion, and RAG streaming
-│   ├── /database           # ChromaDB vector store client & Pydantic schemas
-│   ├── requirements.txt    # Python dependencies
-│   └── .env.example        # Environment variable templates
-├── /data                   # Private document folder (Gitignored, contains .keep)
-├── /example-data           # Public sample documents (Markdown, TXT, PDF) for verification
-├── CONTEXT.md              # Living architecture tracking & development progress log
-└── README.md               # Technical project documentation
+├── /frontend                       # Next.js TypeScript application
+│   ├── /app                        # App Router (page.tsx, layout.tsx, globals.css)
+│   ├── /components                 # Modular UI Components
+│   │   ├── SidebarNav.tsx          # Left navigation bar & Ollama status telemetry
+│   │   ├── ChatInterface.tsx       # Minimalist chat screen with dynamic greeting
+│   │   ├── MessageBubble.tsx       # Markdown message bubble with clickable citation pills
+│   │   ├── DocumentSidebar.tsx     # Slide-out document manager, dropzone & folder indexer
+│   │   ├── NewNoteModal.tsx        # Direct note & clipboard text ingestion modal
+│   │   ├── SourceInspectorModal.tsx# Slide-in source context inspection drawer
+│   │   └── CeteraLogo.tsx          # Canonical planetary logo & orbit animations
+│   └── /lib                        # Frontend utilities, types & SSE API client
+│       ├── api.ts                  # Fetch wrappers & SSE streaming reader
+│       └── types.ts                # TypeScript data contracts & models
+├── /backend                        # FastAPI Python backend
+│   ├── main.py                     # Application entry point with CORS configuration
+│   ├── /api                        # REST routes & endpoints
+│   │   └── routes.py               # /status, /documents, /ingest, /ingest/text, /chat, /clear
+│   ├── /services                   # Business logic and processing services
+│   │   ├── ingestion_service.py    # Multi-format document parser & chunker
+│   │   ├── ollama_service.py       # Local Ollama client (health, embeddings, chat)
+│   │   └── rag_service.py          # Grounded RAG prompt constructor & citation resolver
+│   ├── /database                   # Data layer
+│   │   ├── vector_store.py         # ChromaDB persistence & similarity search client
+│   │   └── schemas.py              # Pydantic request & response schemas
+│   ├── /tests                      # Automated unit tests
+│   │   └── test_rag_pipeline.py    # Vector store & schema validation tests
+│   ├── requirements.txt            # Python dependencies
+│   └── .env.example                # Environment variables template
+├── /data                           # User private documents (Gitignored, contains .keep)
+├── /example-data                   # Public verification documents (PDF, MD, TXT)
+├── CONTEXT.md                      # Progress log & architecture context
+└── README.md                       # Project documentation
 ```
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/status` | System health check, Ollama connection status, model inventory, and collection stats |
+| `GET` | `/api/documents` | List all indexed documents with chunk and page counts |
+| `POST` | `/api/ingest` | Upload `.pdf`, `.md`, `.txt` files or scan folders (`data` / `example-data`) |
+| `POST` | `/api/ingest/text` | Direct ingestion of plain-text notes and clipboard summaries |
+| `POST` | `/api/chat` | SSE streaming endpoint for grounded RAG query generation |
+| `DELETE` | `/api/documents/{filename}` | Delete all vector chunks associated with a specific file |
+| `DELETE` | `/api/clear` | Clear the entire ChromaDB collection and wipe indexed documents |
 
 ---
 
 ## Quickstart Guide
 
 ### 1. Prerequisites
-1. **Ollama**: Download and install from [ollama.com](https://ollama.com).
-2. **Pull Local Models**:
+1. **Install Ollama**: Download from [ollama.com](https://ollama.com).
+2. **Pull Required Models**:
    ```bash
-   # Pull embedding model (768-dim, <500MB VRAM)
+   # Embedding model (768-dim, <500MB VRAM)
    ollama pull nomic-embed-text
 
-   # Pull generation model (3B parameters, ~2.2GB VRAM)
+   # Generation model (3B parameters, ~2.2GB VRAM)
    ollama pull llama3.2
    ```
-3. **Python 3.10+** and **Node.js 18+**.
+3. **Runtime**: Python 3.10+ and Node.js 18+.
 
 ---
 
 ### 2. Backend Setup
-1. Navigate to the backend folder:
+1. Navigate to the backend directory:
    ```bash
    cd backend
    ```
-2. Install dependencies:
+2. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
@@ -136,12 +178,12 @@ Running RAG systems locally on consumer GPUs (e.g. RTX 3060/4060 8GB VRAM) requi
    ```bash
    python main.py
    ```
-   *The backend will start at `http://127.0.0.1:8000` (API docs at `http://127.0.0.1:8000/docs`).*
+   *The server runs at `http://127.0.0.1:8000` (interactive API docs available at `http://127.0.0.1:8000/docs`).*
 
 ---
 
 ### 3. Frontend Setup
-1. Navigate to the frontend folder in a new terminal:
+1. In a new terminal, navigate to the frontend directory:
    ```bash
    cd frontend
    ```
@@ -149,7 +191,7 @@ Running RAG systems locally on consumer GPUs (e.g. RTX 3060/4060 8GB VRAM) requi
    ```bash
    npm install
    ```
-3. Run the development server:
+3. Start the development server:
    ```bash
    npm run dev
    ```
@@ -157,12 +199,33 @@ Running RAG systems locally on consumer GPUs (e.g. RTX 3060/4060 8GB VRAM) requi
 
 ---
 
-### 4. Ingestion & Testing the Pipeline
-1. Open the web interface at `http://localhost:3000`.
-2. Click **"Documents"** in the top-right header to open the Document Store sidebar.
-3. Click **"Load Example Data"** to automatically index the sample documents in `/example-data`.
-4. Ask a question such as:
-   - *"What are the core pillars of Local-First RAG?"*
-   - *"How is memory managed within 8GB VRAM limits?"*
-   - *"Summarize Project Falcon's private data policy."*
-5. Inspect the generated answer with inline citations and click any citation pill to view the exact retrieved chunk in the **Context Chunk Inspector**.
+### 4. Usage & Workflows
+
+1. **Open Document Storage**: Click the database icon in the left navigation bar or press <kbd>Ctrl</kbd> + <kbd>K</kbd> (<kbd>Cmd</kbd> + <kbd>K</kbd> on macOS).
+2. **Index Documents**:
+   - **Sample Data**: Click **"Example Dataset"** to load the sample documents from `/example-data`.
+   - **Local Folder**: Click **"Local Folder"** to scan and ingest documents from `/data`.
+   - **Drag & Drop**: Drop `.pdf`, `.md`, or `.txt` files directly into the upload dropzone.
+   - **Quick Notes**: Click **"New Note"** (<kbd>+</kbd>) to type or paste notes and meeting transcripts directly into vector storage.
+3. **Ask Questions**:
+   - Type inquiries into the bottom chat bar (e.g. *"What are the core pillars of Local-First RAG?"* or *"Summarize the security policies"*).
+   - Watch real-time streaming tokens and click on any citation pill to view the source text and similarity confidence score in the **Context Inspector**.
+4. **Manage Memory**:
+   - Delete individual documents using the trash icon next to each file.
+   - Click **"Clear All"** to purge the entire vector database.
+
+---
+
+## Verification & Testing
+
+Run the automated backend test suite:
+```bash
+cd backend
+python -m pytest tests
+```
+
+Build the frontend for production:
+```bash
+cd frontend
+npm run build
+```

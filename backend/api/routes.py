@@ -5,11 +5,12 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 
-from database.schemas import ChatRequest, IngestResponse, StatusResponse, DocumentInfo, PullModelRequest
+from database.schemas import ChatRequest, IngestResponse, StatusResponse, DocumentInfo, TextIngestRequest
 from database.vector_store import vector_store
 from services.ollama_service import ollama_service
 from services.ingestion_service import ingestion_service
 from services.rag_service import rag_service
+
 
 load_dotenv()
 
@@ -42,26 +43,9 @@ async def get_status():
         available_models=ollama_info["models"],
         default_llm=ollama_info["default_llm"],
         default_embed=ollama_info["default_embed"],
-        has_vision_model=ollama_info.get("has_vision_model", False),
-        vision_model=ollama_info.get("vision_model"),
-        recommended_vision_model=ollama_info.get("recommended_vision_model", "llama3.2-vision"),
         total_documents=len(docs),
         total_chunks=total_chunks,
         documents=doc_models,
-    )
-
-@router.post("/models/pull")
-async def pull_model(request: PullModelRequest):
-    """1-Click download and install local Ollama model with real-time SSE progress streaming."""
-    ollama_info = await ollama_service.check_health()
-    if not ollama_info["connected"]:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Ollama daemon is not running at {ollama_info['url']}.",
-        )
-    return StreamingResponse(
-        ollama_service.pull_model_stream(request.model),
-        media_type="text/event-stream",
     )
 
 
@@ -149,6 +133,32 @@ async def ingest_documents(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Must provide either target_dir or upload files.",
     )
+
+@router.post("/ingest/text", response_model=IngestResponse)
+async def ingest_text_note(payload: TextIngestRequest):
+    """Directly ingest a plain-text note, meeting summary, or clipboard content into vector storage."""
+    ollama_info = await ollama_service.check_health()
+    if not ollama_info["connected"]:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Ollama is not reachable at {ollama_info['url']}. Ensure Ollama is running.",
+        )
+
+    if not payload.content or not payload.content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Note content cannot be empty.",
+        )
+
+    res = await ingestion_service.process_text_note(payload.title, payload.content)
+    return IngestResponse(
+        status="success" if res.get("chunks", 0) > 0 else "empty",
+        total_files_processed=1,
+        total_chunks_indexed=res.get("chunks", 0),
+        files=[res],
+        details=None,
+    )
+
 
 @router.post("/chat")
 async def chat_stream(request: ChatRequest):
