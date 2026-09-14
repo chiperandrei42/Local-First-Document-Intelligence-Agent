@@ -19,12 +19,12 @@ The application wraps a Next.js / React UI, a Python FastAPI orchestrator, and a
 ```mermaid
 flowchart TB
     subgraph HostOS["Host Operating System (Metal / CUDA / CPU Fallback)"]
-        OllamaNative["Native Ollama App (:11434)\n• Enforces Q4_K_M Quantized RAM\n• nomic-embed-text (768-dim Embeddings)\n• llama3.2 / llama3.1 (Local LLM)"]
+        OllamaNative["Native Ollama Daemon (Port 11434)<br/>• Enforces Q4_K_M Quantized RAM<br/>• nomic-embed-text (768-dim Embeddings)<br/>• llama3.2 / llama3.1 (Local LLM)"]
     end
 
-    subgraph ElectronWrapper["Electron Desktop Shell (electron/)"]
-        MainProc["Electron Main Process (main.js)\n• Child Process Lifecycle & Auto-Boot\n• Host Hardware Diagnostics (RAM / OS / CPU)\n• Native Frameless Window Management"]
-        Preload["Preload IPC Bridge (preload.js)\n• window.electronAPI (Safe contextBridge)"]
+    subgraph ElectronWrapper["Electron Desktop Shell"]
+        MainProc["Electron Main Process (main.js)<br/>• Child Process Lifecycle & Auto-Boot<br/>• Host Hardware Diagnostics (RAM / OS / CPU)<br/>• Native Frameless Window Management"]
+        Preload["Preload IPC Bridge (preload.js)<br/>• window.electronAPI (Safe contextBridge)"]
 
         subgraph DesktopWindow["Renderer Process (Desktop UI)"]
             Nav["SidebarNav (Telemetry & Ollama Live Status)"]
@@ -32,35 +32,35 @@ flowchart TB
             ChatUI["ChatInterface (Streaming Renderer & Cetera Emblem)"]
             Bubble["MessageBubble (Markdown & Clickable Citations)"]
             DocSidebar["DocumentSidebar (Drag & Drop, Folder Indexing, Deletion)"]
-            NoteModal["NewNoteModal (Direct Text Note Ingestion)"]
+            NoteModal["NewNoteModal (Glassmorphic Knowledge Ingestion)"]
             Inspector["SourceInspectorModal (Context Inspector & Match Scores)"]
         end
 
-        subgraph BackendProcess["Python FastAPI Engine (:8000)"]
-            API["FastAPI REST & SSE Router\n(/chat, /ingest, /system, /models/pull, /ollama/start)"]
-            IngestService["Ingestion Engine\n(PyMuPDF / PyPDF + Recursive Chunker)"]
+        subgraph BackendProcess["Python FastAPI Engine (Port 8000)"]
+            API["FastAPI REST & SSE Router<br/>• /chat, /ingest, /system, /models/pull, /ollama/start"]
+            IngestService["Ingestion Engine<br/>• PyMuPDF / PyPDF + Recursive Chunker"]
             RAGService["RAG Query Service & Citation Formatter"]
-            ChromaStore["ChromaDB Vector Store\n(Persistent ./backend/chroma_db)"]
+            ChromaStore["ChromaDB Vector Store<br/>• Persistent ./backend/chroma_db"]
         end
     end
 
-    MainProc -->|Spawn / Monitor| BackendProcess
-    MainProc -->|Auto-Boot / Probe| OllamaNative
-    MainProc -->|Load Window| DesktopWindow
-    Preload -->|Bridge Hardware Specs| DesktopWindow
-    Nav -->|Trigger Telemetry / Views| Onboarding
-    DocSidebar -->|File Uploads / Ingest Dirs| API
-    NoteModal -->|Direct Notes / Clipboard Ingest| API
-    ChatUI -->|SSE Query Stream POST /api/chat| API
+    MainProc -->|"Spawn / Monitor"| BackendProcess
+    MainProc -->|"Auto-Boot / Probe"| OllamaNative
+    MainProc -->|"Load Window"| DesktopWindow
+    Preload -->|"Bridge Hardware Specs"| DesktopWindow
+    Nav -->|"Trigger Telemetry / Views"| Onboarding
+    DocSidebar -->|"File Uploads / Ingest Dirs"| API
+    NoteModal -->|"Direct Notes / Clipboard Ingest"| API
+    ChatUI -->|"SSE Query Stream POST /api/chat"| API
     API --> IngestService
     API --> RAGService
-    IngestService -->|Micro-Batch Embeddings (Batch Size 16)| OllamaNative
-    IngestService -->|Store Chunks & Metadata| ChromaStore
-    RAGService -->|Top-K Cosine Retrieval| ChromaStore
-    RAGService -->|Grounding Prompt + Chat History| OllamaNative
-    OllamaNative -->|Token-by-Token SSE Stream| ChatUI
-    RAGService -->|Pre-Token Citations & Chunk IDs| Inspector
-    Bubble -->|Inspect Sources| Inspector
+    IngestService -->|"Micro-Batch Embeddings [Batch 16]"| OllamaNative
+    IngestService -->|"Store Chunks & Metadata"| ChromaStore
+    RAGService -->|"Top-K Cosine Retrieval"| ChromaStore
+    RAGService -->|"Grounding Prompt + Chat History"| OllamaNative
+    OllamaNative -->|"Token-by-Token SSE Stream"| ChatUI
+    RAGService -->|"Pre-Token Citations & Chunk IDs"| Inspector
+    Bubble -->|"Inspect Sources"| Inspector
 ```
 
 ---
@@ -243,7 +243,25 @@ npm run dev
 
 ### 4. Packaging Native Installers
 
-To package the desktop application into a standalone installer (`.exe` on Windows, `.dmg` on macOS, or `.AppImage` on Linux):
+#### Option A: Standalone Turnkey Installer (Zero-Python End Users)
+If distributing to users who **do not have Python or pip installed on their machines**, compile the FastAPI + ChromaDB backend into a standalone frozen executable first:
+
+```bash
+# 1. Compile backend into standalone binary
+cd backend
+python -m PyInstaller --noconfirm --onedir --name "backend" --collect-all chromadb --collect-all uvicorn --add-data "services;services" --add-data "database;database" --add-data "api;api" main.py
+cd ..
+
+# 2. Build frontend production bundle
+npm run build:frontend
+
+# 3. Package desktop installer
+npm run pack
+```
+*Outputs `dist/Cetera Setup 1.0.0.exe` (~393 MB) — a completely standalone installer that bundles Electron, Chromium, Next.js static assets, and the compiled Python backend binary.*
+
+#### Option B: Developer Installer (Uses Host Python)
+If packaging for internal team members who already have Python and `requirements.txt` installed:
 
 ```bash
 # 1. Build frontend bundle
@@ -252,7 +270,7 @@ npm run build:frontend
 # 2. Package desktop executable
 npm run pack
 ```
-*The installer will be generated in the `/dist` directory.*
+*Outputs `dist/Cetera Setup 1.0.0.exe` (~84 MB).*
 
 ---
 
